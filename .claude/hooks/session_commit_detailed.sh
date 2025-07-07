@@ -82,15 +82,14 @@ $(date +'Date: %Y-%m-%d %H:%M:%S')
 
 === SESSION TRANSCRIPT ===
 
-$SESSION_CONTENT"
+$SESSION_CONTENT
 
 === END SESSION TRANSCRIPT ===
 
 Files changed in this session:
 $(echo "$STAGED_FILES" | sed 's/^/- /')
 
-Session file: .current-session
-"
+Session file: .current-session"
 
 # Show preview
 echo -e "\n${YELLOW}=== COMMIT MESSAGE PREVIEW ===${NC}"

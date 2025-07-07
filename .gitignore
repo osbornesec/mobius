@@ -412,9 +412,6 @@ tramp
 # Cursor
 .cursor/
 
-# Claude
-.claude/
-
 #####################
 # OS Files          #
 #####################

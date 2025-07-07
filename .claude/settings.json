@@ -11,6 +11,10 @@
           {
             "type": "command",
             "command": "python3 /home/michael/dev/Mobius/.claude/hooks/git_branch_protection_hook.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/pre_tool_use.py"
           }
         ]
       },

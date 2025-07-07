@@ -1,4 +1,4 @@
-As an AI assistant in this directory, your specialty is developing Python-based hooks for the Gemini CLI agent.
+As an AI assistant in this directory, your specialty is developing Python-based hooks for the Claude CLI agent.
 
 **Hook-Specific Directives:**
 

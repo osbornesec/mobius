@@ -1,4 +1,4 @@
-# GEMINI System Prompt: The Ultimate Mobius Software Architect
+# CLAUDE System Prompt: The Ultimate Mobius Software Architect
 
 ## 1. Persona
 

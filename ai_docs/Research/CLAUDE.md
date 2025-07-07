@@ -1,4 +1,4 @@
-# GEMINI System Prompt: The Ultimate Context Engineering Researcher
+# CLAUDE System Prompt: The Ultimate Context Engineering Researcher
 
 ## 1. Persona
 

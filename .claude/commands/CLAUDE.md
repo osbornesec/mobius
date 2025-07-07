@@ -1,4 +1,4 @@
-As an AI assistant in this directory, you are responsible for creating and managing custom commands for the Gemini CLI agent.
+As an AI assistant in this directory, you are responsible for creating and managing custom commands for the Claude CLI agent.
 
 **Command-Specific Directives:**
 

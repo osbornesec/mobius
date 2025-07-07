@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Session Commit Detailed Script
+# Purpose: Creates a git commit with a detailed summary of the current Claude session
+# Usage: ./session_commit_detailed.sh
+# 
+# This script will:
+# - Extract a summary of work done from the current session file
+# - Analyze staged files to determine commit scope
+# - Create a formatted commit message with session details
+# - Include file changes, conversation highlights, and session metadata
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -46,12 +56,33 @@ fi
 # Read session content
 SESSION_CONTENT=$(cat "$SESSION_FILE")
 
-# Create a formatted commit message with full session details
-COMMIT_MESSAGE="$SCOPE Complete session log - $(date +'%Y-%m-%d %H:%M')
+# Generate AI summary of changes
+echo -e "${BLUE}Generating AI summary of changes...${NC}"
+
+# Create a temporary file with staged changes
+TEMP_DIFF="/tmp/staged_changes_$$.diff"
+git diff --cached > "$TEMP_DIFF"
+
+# Extract key changes from session file for context
+RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20)
+
+# Use the AI summary generator
+AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 /home/michael/dev/Mobius/.claude/hooks/generate_commit_summary.py "$TEMP_DIFF")
+
+# Clean up temp file
+rm -f "$TEMP_DIFF"
+
+# Create a formatted commit message with AI summary and full session details
+COMMIT_MESSAGE="$SCOPE $(echo "$AI_SUMMARY" | head -1)
+
+Summary: $AI_SUMMARY
+
+Session Details:
+$(date +'Date: %Y-%m-%d %H:%M:%S')
 
 === SESSION TRANSCRIPT ===
 
-$SESSION_CONTENT
+$SESSION_CONTENT"
 
 === END SESSION TRANSCRIPT ===
 

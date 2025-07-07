@@ -1,0 +1,91 @@
+{
+  "hooks": {
+    "PreToolUse": [
+       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/validate_bash_command.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/git_branch_protection_hook.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/check_large_files_hook.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/git_branch_protection_hook.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/bash /home/michael/dev/Mobius/.claude/hooks/auto_format_code.sh"
+          },
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/run_tests_on_change.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/check_dependencies_hook.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/trigger_doc_update_hook.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/check_line_count_hook.py"
+          }
+        ]
+      },
+      {
+        "matcher": "TodoRead|TodoWrite|Read|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/context7_reminder_post.py"
+          }
+        ]
+      },
+	  {
+        "matcher": "Task|Bash|Glob|Grep|LS|exit_plan_mode|Read|Edit|MultiEdit|Write|NotebookRead|NotebookEdit|WebFetch|TodoRead|TodoWrite|WebSearch|mcp__zen__chat|mcp__zen__thinkdeep|mcp__zen__planner|mcp__zen__consensus|mcp__zen__codereview|mcp__zen__precommit|mcp__zen__debug|mcp__zen__secaudit|mcp__zen__docgen|mcp__zen__analyze|mcp__zen__refactor|mcp__zen__tracer|mcp__zen__testgen|mcp__zen__challenge|mcp__zen__listmodels|mcp__zen__version|mcp__context7__resolve-library-id|mcp__context7__get-library-docs|mcp__sequential-thinking__sequentialthinking|mcp__puppeteer__puppeteer_navigate|mcp__puppeteer__puppeteer_screenshot|mcp__puppeteer__puppeteer_click|mcp__puppeteer__puppeteer_fill|mcp__puppeteer__puppeteer_select|mcp__puppeteer__puppeteer_hover|mcp__puppeteer__puppeteer_evaluate|ListMcpResourcesTool|ReadMcpResourceTool|mcp__perplexity__search|mcp__perplexity__reason|mcp__perplexity__deep_research|mcp__supabase__list_organizations|mcp__supabase__get_organization|mcp__supabase__list_projects|mcp__supabase__get_project|mcp__supabase__get_cost|mcp__supabase__confirm_cost|mcp__supabase__create_project|mcp__supabase__pause_project|mcp__supabase__restore_project|mcp__supabase__create_branch|mcp__supabase__list_branches|mcp__supabase__delete_branch|mcp__supabase__merge_branch|mcp__supabase__reset_branch|mcp__supabase__rebase_branch|mcp__supabase__list_tables|mcp__supabase__list_extensions|mcp__supabase__list_migrations|mcp__supabase__apply_migration|mcp__supabase__execute_sql|mcp__supabase__get_logs|mcp__supabase__get_advisors|mcp__supabase__get_project_url|mcp__supabase__get_anon_key|mcp__supabase__generate_typescript_types|mcp__supabase__search_docs|mcp__supabase__list_edge_functions|mcp__supabase__deploy_edge_function",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/michael/dev/Mobius/.claude/hooks/log_tool_usage.sh"
+          }
+        ]
+      },
+	  {
+        "matcher": "Bash|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/pre_tool_use.py"
+          }
+        ]
+      }
+    ]
+  }
+}

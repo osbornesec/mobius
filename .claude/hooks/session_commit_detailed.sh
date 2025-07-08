@@ -57,7 +57,11 @@ fi
 SESSION_CONTENT=$(cat "$SESSION_FILE")
 
 # Generate AI summary of changes
-echo -e "${BLUE}Generating AI summary of changes...${NC}"
+# Additional delay to ensure session is fully captured
+sleep 2
+
+# Re-read session content after delay
+SESSION_CONTENT=$(cat "$SESSION_FILE")
 
 # Create a temporary file with staged changes
 TEMP_DIFF="/tmp/staged_changes_$$.diff"
@@ -67,7 +71,7 @@ git diff --cached > "$TEMP_DIFF"
 RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20)
 
 # Use the AI summary generator
-AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 /home/michael/dev/Mobius/.claude/hooks/generate_commit_summary.py "$TEMP_DIFF")
+AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 /home/michael/dev/Mobius/.claude/hooks/generate_commit_summary.py "$TEMP_DIFF" 2>/dev/null)
 
 # Clean up temp file
 rm -f "$TEMP_DIFF"

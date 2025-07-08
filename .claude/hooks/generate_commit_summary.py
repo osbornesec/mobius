@@ -101,31 +101,72 @@ def try_ai_summary(diff_content, session_content):
                 import google.generativeai as genai
                 
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-2.5-pro')
+                model = genai.GenerativeModel('gemini-2.5-flash-lite-preview-06-17')
                 
-                prompt = f"""Analyze these git changes and session activity to write a concise 1-2 line commit message summary.
-Focus on WHAT was changed and WHY it matters.
+                # Use raw diff content with size limit
+                prompt_diff = diff_content[:3000] if diff_content else "No diff content"
+                
+                prompt = f"""Analyze these code changes and development session to write a detailed commit message.
 
-Git diff (first 2000 chars):
-{diff_content[:2000]}
+Code Changes:
+{prompt_diff}
 
-Recent session activity:
-{session_content[-2000:]}
+Development Session Context:
+{session_content[-800:] if session_content else 'No session data'}
 
-Provide ONLY the summary, no additional text or formatting."""
+Write a comprehensive commit message that:
+- Uses a clear, descriptive title (50-72 characters)
+- Includes a detailed body explaining what was changed and why
+- Focuses on the technical purpose and business impact
+- Uses proper commit message format
+
+Provide only the commit message text (title + body if appropriate)."""
                 
                 response = model.generate_content(
                     prompt,
                     generation_config=genai.types.GenerationConfig(
                         max_output_tokens=500,
                         temperature=0.3,
-                    )
+                    ),
+                    safety_settings=[
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        },
+                    ]
                 )
                 
-                return response.text.strip()
-    except Exception as e:
-        # Log error for debugging (optional)
-        # print(f"AI summary failed: {e}", file=sys.stderr)
+                # Response validation and error handling
+                if hasattr(response, 'candidates') and response.candidates:
+                    candidate = response.candidates[0]
+                    if hasattr(candidate, 'finish_reason'):
+                        # Check if content was blocked
+                        if candidate.finish_reason in [2, 'SAFETY']:  # 2 is SAFETY finish reason
+                            return None
+                    
+                    # Try to access the text content safely
+                    try:
+                        if hasattr(response, 'text') and response.text:
+                            return response.text.strip()
+                        else:
+                            return None
+                    except Exception:
+                        return None
+                else:
+                    return None
+    except Exception:
         pass
     
     return None

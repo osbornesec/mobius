@@ -1,6 +1,30 @@
 # Mobius
 
-This project was initialized by Gemini.
+**GitHub Repository:** [https://github.com/osbornesec/mobius](https://github.com/osbornesec/mobius)
+
+## Overview
+
+Mobius is a cutting-edge Context Engineering Platform designed for AI coding assistants. Built with FastAPI (Python) for the backend and React (TypeScript) for the frontend, Mobius provides intelligent context management, multi-agent coordination, and seamless IDE integration to enhance developer productivity.
+
+### Key Features
+
+- **Multi-Agent AI System**: Specialized AI agents for context building, retrieval, code generation, and orchestration
+- **Intelligent Context Management**: Advanced context aggregation and relevance scoring for improved AI interactions
+- **IDE Integration**: Language Server Protocol (LSP) implementation for VSCode and Cursor
+- **Vector-Powered Search**: Integration with Qdrant and Pinecone for semantic code search and retrieval
+- **Real-time Collaboration**: WebSocket-based real-time features for team collaboration
+- **Enterprise Security**: OAuth2+JWT authentication, rate limiting, and comprehensive audit logging
+- **Scalable Architecture**: Kubernetes-ready with multi-region deployment capabilities
+- **Comprehensive Analytics**: Built-in metrics collection, performance monitoring, and usage analytics
+
+### Technology Stack
+
+- **Backend**: FastAPI, Python 3.11+, Pydantic, SQLAlchemy
+- **Frontend**: React 18, TypeScript, Redux/Zustand, Vite
+- **Databases**: PostgreSQL with pgvector, Redis for caching
+- **Vector Storage**: Qdrant (primary), Pinecone (secondary)
+- **Infrastructure**: Docker, Kubernetes, Terraform
+- **AI Integrations**: OpenAI, Anthropic Claude, custom model adapters
 
 ## Project Structure
 
@@ -190,3 +214,167 @@ This structure supports a scalable, microservices-ready architecture with:
 - Comprehensive testing strategy
 - Production-ready deployment configurations
 - Extensive monitoring and analytics capabilities
+
+## Getting Started
+
+### Prerequisites
+
+- **Python 3.11+**
+- **Node.js 18+** and npm/yarn
+- **Docker** and Docker Compose
+- **PostgreSQL 14+**
+- **Redis 6+**
+
+### Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/osbornesec/mobius.git
+   cd mobius
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cp .env.sample .env
+   # Edit .env with your configuration
+   ```
+
+3. **Start with Docker Compose** (Recommended)
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Or run locally**
+   ```bash
+   # Backend
+   pip install -r requirements.txt
+   uvicorn app.main:app --reload
+
+   # Frontend (in another terminal)
+   npm install
+   npm run dev
+   ```
+
+5. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+
+## Installation
+
+### Development Setup
+
+```bash
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install frontend dependencies
+npm install
+
+# Set up pre-commit hooks
+pre-commit install
+
+# Run database migrations
+alembic upgrade head
+
+# Start development servers
+make dev
+```
+
+### Production Deployment
+
+See [deployment documentation](docs/deployment/) for detailed production setup instructions.
+
+## Usage
+
+### Basic API Usage
+
+```python
+import requests
+
+# Example API call
+response = requests.post("http://localhost:8000/api/v1/context/search", 
+    json={"query": "authentication implementation"})
+print(response.json())
+```
+
+### IDE Integration
+
+Install the Mobius extension for VSCode or Cursor to enable intelligent context suggestions directly in your editor.
+
+## API Documentation
+
+- **OpenAPI/Swagger**: Available at `/docs` when running the server
+- **ReDoc**: Available at `/redoc` for alternative API documentation
+- **Detailed API Guide**: See [docs/api/](docs/api/)
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests (`make test`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### Code Standards
+
+- Follow PEP 8 for Python code
+- Use ESLint and Prettier for TypeScript/React
+- Write tests for new features
+- Update documentation as needed
+
+## Testing
+
+```bash
+# Run all tests
+make test
+
+# Backend tests only
+pytest tests/backend/
+
+# Frontend tests only
+npm test
+
+# E2E tests
+npm run test:e2e
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/osbornesec/mobius/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/osbornesec/mobius/discussions)
+
+## Roadmap
+
+Mobius follows a comprehensive 24-month implementation plan spanning 4 phases. For detailed roadmap including timelines, budgets, and technical specifications, see our [Implementation Roadmap](ai_docs/IMPLEMENTATION_ROADMAP.md).
+
+### Current Phase: Foundation (Months 1-3)
+- [x] Project structure and documentation
+- [ ] Core infrastructure setup (FastAPI, PostgreSQL, Redis)
+- [ ] Basic context processing and vector embeddings
+- [ ] Frontend foundation with React + TypeScript
+- [ ] CI/CD pipeline and development environment
+
+### Upcoming Phases:
+- **Phase 2 (Months 4-8)**: MVP with AI integration and IDE support
+- **Phase 3 (Months 9-16)**: Advanced multi-agent system and enterprise features  
+- **Phase 4 (Months 17-24)**: Enterprise scale supporting 10k+ concurrent users
+
+**Target Outcome**: Enterprise-grade AI context engineering platform with <200ms latency and multi-agent AI coordination.
+
+## Acknowledgments
+
+- Built with [FastAPI](https://fastapi.tiangolo.com/) and [React](https://reactjs.org/)
+- Vector storage powered by [Qdrant](https://qdrant.tech/)
+- AI integrations with OpenAI and Anthropic Claude

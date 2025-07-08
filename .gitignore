@@ -645,4 +645,7 @@ rabbitmq-data/
 elasticsearch-data/
 solr-data/
 
+# Claude-specific
+.claude/sessions/archive/
+
 # End of .gitignore

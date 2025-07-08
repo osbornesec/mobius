@@ -18,9 +18,9 @@ WORKDIR /app
 COPY --chown=nodejs:nodejs frontend/package*.json ./
 
 # Install dependencies as root (needed for native modules)
-RUN npm ci && \
+RUN npm ci --no-audit --fund=false && \
     # Change ownership of node_modules to nodejs user
-    chown -R nodejs:nodejs /app
+    chown -R nodejs:nodejs node_modules
 
 # Switch to non-root user
 USER nodejs

@@ -1,0 +1,24 @@
+# Dive CI configuration for Mobius Docker images
+# https://github.com/wagoodman/dive
+
+rules:
+  # Fail if efficiency is below threshold
+  # (efficiency = 1.0 - (wastedBytes / totalBytes))
+  lowestEfficiency: 0.90
+
+  # Fail if wasted space exceeds absolute size
+  highestWasteBytes: 20MB
+
+  # Fail if wasted space exceeds percentage
+  highestUserWastedPercent: 0.10
+
+  # Image size limits for different components
+  # Note: These are guidelines - adjust based on actual requirements
+  imageSizeLimit: 500MB # Default limit
+
+
+  # Component-specific size limits (future enhancement)
+  # componentLimits:
+  #   backend: 400MB
+  #   frontend: 300MB
+  #   worker: 350MB

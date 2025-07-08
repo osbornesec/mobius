@@ -1,9 +1,9 @@
-# Development Dockerfile for Mobius Backend
-# This Dockerfile is optimized for development with hot reloading
+# Multi-stage Dockerfile for Mobius Backend
+# Properly separates production and development dependencies
 # Uses multi-stage build to reduce final image size
 
-# Builder stage - includes all build dependencies
-FROM python:3.11-slim as builder
+# Production builder stage - only production dependencies
+FROM python:3.11-slim as prod-builder
 
 # Set working directory
 WORKDIR /app
@@ -16,17 +16,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev=15.13-0+deb12u1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements files
-COPY requirements.txt requirements-dev.txt ./
+# Copy only production requirements
+COPY requirements.txt ./
 
-# Create virtual environment and install Python dependencies
+# Create virtual environment and install ONLY production dependencies
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
+RUN pip install --no-cache-dir --upgrade pip==24.0 && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Final stage - minimal runtime image
-FROM python:3.11-slim
+# Development builder stage - includes dev dependencies
+FROM prod-builder as dev-builder
+
+# Copy dev requirements
+COPY requirements-dev.txt ./
+
+# Install development dependencies on top of production ones
+RUN pip install --no-cache-dir -r requirements-dev.txt
+
+# Final production stage - minimal runtime image
+FROM python:3.11-slim as production
 
 # Install only runtime dependencies
 # Pinned versions for Debian 12 (Bookworm) to ensure reproducible builds
@@ -41,8 +50,8 @@ RUN groupadd -r mobius && useradd -r -g mobius mobius
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
+# Copy virtual environment from production builder (no dev dependencies)
+COPY --from=prod-builder /opt/venv /opt/venv
 
 # Set up environment to use virtual environment
 ENV PATH="/opt/venv/bin:$PATH"
@@ -50,7 +59,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Copy application code with proper ownership
-COPY --chown=mobius:mobius app/ ./app/
+COPY --chown=mobius:mobius app/ ./
 COPY --chown=mobius:mobius alembic/ ./alembic/
 COPY --chown=mobius:mobius pyproject.toml ./
 
@@ -64,5 +73,20 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Default command (can be overridden in docker-compose.yml)
+# Default command for production
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Development stage - includes dev dependencies for local development
+FROM production as development
+
+# Switch back to root to install dev dependencies
+USER root
+
+# Copy virtual environment with dev dependencies from dev-builder
+COPY --from=dev-builder /opt/venv /opt/venv
+
+# Switch back to non-root user
+USER mobius
+
+# Development command with hot reloading
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

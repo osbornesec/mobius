@@ -1,0 +1,100 @@
+name: Docker Linting
+
+on:
+  pull_request:
+    paths:
+      - 'docker/**'
+      - 'docker-compose*.yml'
+      - '.dockerignore'
+      - '.hadolint.yaml'
+      - '.dive-ci.yaml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'docker/**'
+      - 'docker-compose*.yml'
+      - '.dockerignore'
+      - '.hadolint.yaml'
+      - '.dive-ci.yaml'
+
+jobs:
+  hadolint:
+    name: Hadolint Dockerfile Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Hadolint on Backend Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/backend/Dockerfile
+          config: .hadolint.yaml
+
+      - name: Run Hadolint on Frontend Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/frontend/Dockerfile.dev
+          config: .hadolint.yaml
+
+  docker-compose-validate:
+    name: Docker Compose Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Docker Compose files
+        run: |
+          docker-compose -f docker-compose.yml config > /dev/null
+          docker-compose -f docker-compose.prod.yml config > /dev/null
+
+  dive-analysis:
+    name: Dive Image Analysis
+    runs-on: ubuntu-latest
+    # Only run on main branch pushes to avoid building on every PR
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Backend Image
+        run: docker build -f docker/backend/Dockerfile -t mobius-backend:ci .
+
+      - name: Run Dive on Backend
+        uses: yuichielectric/dive-action@0.0.4
+        with:
+          image: 'mobius-backend:ci'
+          config: '.dive-ci.yaml'
+
+      # Uncomment when frontend Dockerfile is ready
+      # - name: Build Frontend Image
+      #   run: docker build -f docker/frontend/Dockerfile -t mobius-frontend:ci .
+
+      # - name: Run Dive on Frontend
+      #   uses: yuichielectric/dive-action@0.0.4
+      #   with:
+      #     image: 'mobius-frontend:ci'
+      #     config: '.dive-ci.yaml'
+
+  security-scan:
+    name: Security Scan with Trivy
+    runs-on: ubuntu-latest
+    # Only run on main branch pushes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Backend Image
+        run: docker build -f docker/backend/Dockerfile -t mobius-backend:ci .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'mobius-backend:ci'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'

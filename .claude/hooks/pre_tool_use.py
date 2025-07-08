@@ -56,8 +56,45 @@ def format_with_prettier(tool_name, tool_input):
         }
         
         if any(file_path.endswith(ext) for ext in prettier_extensions):
-            # For Write operations, we'll need to format after the write
-            # For Edit/MultiEdit, we can suggest formatting
+            # For Write operations, spawn a background process to format after write
+            if tool_name == 'Write':
+                print(f"📝 Will format {file_path} with Prettier after write completes", file=sys.stderr)
+                
+                # Create a script that will wait for the file to exist and then format it
+                format_script = f"""#!/bin/bash
+# Wait for file to exist (max 10 seconds)
+for i in {{1..20}}; do
+    if [ -f "{file_path}" ]; then
+        # File exists, wait a bit more to ensure write is complete
+        sleep 0.5
+        # Run prettier
+        npx prettier --write "{file_path}" 2>/dev/null || true
+        exit 0
+    fi
+    sleep 0.5
+done
+"""
+                
+                # Write and execute the script in background
+                import tempfile
+                import os
+                
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False) as f:
+                    f.write(format_script)
+                    script_path = f.name
+                
+                os.chmod(script_path, 0o755)
+                
+                # Run in background and clean up
+                subprocess.Popen(
+                    ['/bin/bash', '-c', f'{script_path} && rm -f {script_path}'],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                
+                return
+            
+            # For Edit/MultiEdit, format the existing file before the edit
             if tool_name in ['Edit', 'MultiEdit'] and file_path_obj.exists():
                 try:
                     # Try to find prettier executable

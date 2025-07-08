@@ -248,6 +248,7 @@ lint: ## Run all linters
 	@echo -e "$(BLUE)Running all linters...$(NC)"
 	$(MAKE) backend-lint
 	$(MAKE) frontend-lint
+	$(MAKE) lint-all-docker
 	@echo -e "$(GREEN)✓ All linting complete$(NC)"
 
 .PHONY: format
@@ -328,6 +329,136 @@ dev-reset: down docker-clean install dev ## Reset and restart development enviro
 .PHONY: check
 check: lint typecheck test ## Run all checks (lint, typecheck, test)
 	@echo -e "$(GREEN)✓ All checks passed$(NC)"
+
+# =============================================
+# Docker Linting Commands
+# =============================================
+
+.PHONY: lint-docker
+lint-docker: ## Lint Dockerfiles with Hadolint
+	@echo -e "$(BLUE)Linting Dockerfiles...$(NC)"
+	@if command -v hadolint >/dev/null 2>&1; then \
+		hadolint --config .hadolint.yaml docker/backend/Dockerfile; \
+		hadolint --config .hadolint.yaml docker/frontend/Dockerfile.dev; \
+		echo -e "$(GREEN)✓ Dockerfile linting passed$(NC)"; \
+	else \
+		echo -e "$(YELLOW)Hadolint not installed. Run 'make install-lint-tools' to install it.$(NC)"; \
+		echo -e "$(YELLOW)Or use Docker: docker run --rm -i hadolint/hadolint < docker/backend/Dockerfile$(NC)"; \
+	fi
+
+.PHONY: lint-compose
+lint-compose: ## Validate Docker Compose files syntax
+	@echo -e "$(BLUE)Validating Docker Compose files...$(NC)"
+	@echo -e "$(BLUE)Checking docker-compose.yml...$(NC)"
+	@if [ -f .env ]; then \
+		docker-compose --env-file .env -f docker-compose.yml config > /dev/null && \
+		echo -e "$(GREEN)✓ docker-compose.yml is valid$(NC)"; \
+	else \
+		echo -e "$(YELLOW)Warning: .env file not found, using environment variables$(NC)"; \
+		docker-compose -f docker-compose.yml config > /dev/null && \
+		echo -e "$(GREEN)✓ docker-compose.yml is valid$(NC)"; \
+	fi
+	@echo -e "$(BLUE)Checking docker-compose.prod.yml...$(NC)"
+	@if [ -f .env ] && grep -q "REDIS_PASSWORD" .env && grep -q "QDRANT_API_KEY" .env; then \
+		docker-compose --env-file .env -f docker-compose.prod.yml config > /dev/null && \
+		echo -e "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)"; \
+	else \
+		echo -e "$(YELLOW)Warning: Production variables (REDIS_PASSWORD, QDRANT_API_KEY) not found in .env$(NC)"; \
+		echo -e "$(YELLOW)Skipping production compose validation. Set these in .env for production deployments.$(NC)"; \
+	fi
+	@echo -e "$(GREEN)✓ Docker Compose validation completed$(NC)"
+
+.PHONY: lint-images
+lint-images: ## Analyze Docker images with dive (requires images to be built)
+	@echo -e "$(BLUE)Analyzing Docker images with dive...$(NC)"
+	@if command -v dive >/dev/null 2>&1; then \
+		if docker images | grep -q "mobius-backend"; then \
+			dive mobius-backend:latest --ci --config .dive-ci.yaml; \
+		else \
+			echo -e "$(YELLOW)mobius-backend:latest image not found. Build it first with 'make build'.$(NC)"; \
+		fi; \
+		if docker images | grep -q "mobius-frontend"; then \
+			dive mobius-frontend:latest --ci --config .dive-ci.yaml; \
+		else \
+			echo -e "$(YELLOW)mobius-frontend:latest image not found. Build it first with 'make build'.$(NC)"; \
+		fi; \
+	else \
+		echo -e "$(YELLOW)dive not installed. Run 'make install-lint-tools' to install it.$(NC)"; \
+	fi
+
+.PHONY: lint-all-docker
+lint-all-docker: lint-docker lint-compose ## Run all Docker lints
+	@echo -e "$(GREEN)✓ All Docker linting passed$(NC)"
+
+.PHONY: install-lint-tools
+install-lint-tools: ## Install Docker linting tools
+	@echo -e "$(BLUE)Installing Docker linting tools...$(NC)"
+	@# Install pre-commit
+	@if command -v pip >/dev/null 2>&1; then \
+		pip install pre-commit; \
+	else \
+		echo -e "$(YELLOW)pip not found. Please install Python and pip first.$(NC)"; \
+		exit 1; \
+	fi
+	@# Install hadolint
+	@echo -e "$(BLUE)Installing hadolint...$(NC)"
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		if command -v brew >/dev/null 2>&1; then \
+			brew install hadolint; \
+		else \
+			echo -e "$(YELLOW)Homebrew not found. Installing hadolint manually...$(NC)"; \
+			curl -L https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Darwin-x86_64 -o /tmp/hadolint; \
+			chmod +x /tmp/hadolint; \
+			sudo mv /tmp/hadolint /usr/local/bin/hadolint || mv /tmp/hadolint ~/.local/bin/hadolint; \
+		fi; \
+	else \
+		wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64; \
+		chmod +x /tmp/hadolint; \
+		mkdir -p ~/.local/bin; \
+		mv /tmp/hadolint ~/.local/bin/hadolint; \
+		echo -e "$(YELLOW)hadolint installed to ~/.local/bin/hadolint$(NC)"; \
+		echo -e "$(YELLOW)Make sure ~/.local/bin is in your PATH$(NC)"; \
+	fi
+	@# Install dive
+	@echo -e "$(BLUE)Installing dive...$(NC)"
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		if command -v brew >/dev/null 2>&1; then \
+			brew install dive; \
+		else \
+			echo -e "$(YELLOW)Please install dive manually from https://github.com/wagoodman/dive$(NC)"; \
+		fi; \
+	else \
+		wget -O /tmp/dive.tar.gz https://github.com/wagoodman/dive/releases/download/v0.11.0/dive_0.11.0_linux_amd64.tar.gz; \
+		tar -xzf /tmp/dive.tar.gz -C /tmp/; \
+		mkdir -p ~/.local/bin; \
+		mv /tmp/dive ~/.local/bin/dive; \
+		rm /tmp/dive.tar.gz; \
+		echo -e "$(YELLOW)dive installed to ~/.local/bin/dive$(NC)"; \
+		echo -e "$(YELLOW)Make sure ~/.local/bin is in your PATH$(NC)"; \
+	fi
+	@# Install pre-commit hooks
+	@if [ -f ".pre-commit-config.yaml" ]; then \
+		echo -e "$(BLUE)Installing pre-commit hooks...$(NC)"; \
+		pre-commit install; \
+		echo -e "$(GREEN)✓ Pre-commit hooks installed$(NC)"; \
+	fi
+	@echo -e "$(GREEN)✓ Docker linting tools installed successfully$(NC)"
+
+.PHONY: security-scan-docker
+security-scan-docker: ## Run security scan on Docker images
+	@echo -e "$(BLUE)Running Docker security scan...$(NC)"
+	@if docker images | grep -q "mobius-backend"; then \
+		docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+			aquasec/trivy image mobius-backend:latest; \
+	else \
+		echo -e "$(YELLOW)mobius-backend:latest image not found. Build it first with 'make build'.$(NC)"; \
+	fi
+	@if docker images | grep -q "mobius-frontend"; then \
+		docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+			aquasec/trivy image mobius-frontend:latest; \
+	else \
+		echo -e "$(YELLOW)mobius-frontend:latest image not found. Build it first with 'make build'.$(NC)"; \
+	fi
 
 # =============================================
 # CI/CD Commands

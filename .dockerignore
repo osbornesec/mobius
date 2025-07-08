@@ -160,9 +160,8 @@ temp/
 *.db-journal
 *.db-wal
 
-# Docker files (these shouldn't be in build context)
-docker-compose*.yml
-docker-compose*.yaml
+# Docker files (Dockerfile and .dockerignore shouldn't be in build context)
+# Note: docker-compose files ARE needed for dev containers
 Dockerfile*
 .dockerignore
 .docker/
@@ -210,7 +209,9 @@ kubernetes/
 helm/
 *.yaml
 *.yml
+# Re-include docker-compose files - they're needed for dev containers
 !docker-compose*.yml
+!docker-compose*.yaml
 
 # Backup files
 backup/

@@ -32,6 +32,20 @@
       "options": {
         "tabWidth": 2
       }
+    },
+    {
+      "files": ["frontend/**/*.{js,jsx,ts,tsx}"],
+      "options": {
+        "semi": false,
+        "trailingComma": "all",
+        "printWidth": 80
+      }
+    },
+    {
+      "files": "frontend/**/*.json",
+      "options": {
+        "printWidth": 200
+      }
     }
   ]
 }

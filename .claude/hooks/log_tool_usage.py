@@ -426,7 +426,7 @@ def main():
         with open('/tmp/hook_debug.log', 'a') as f:
             f.write(f"[{datetime.now()}] JSON decode error: {e}\n")
             f.write(f"Input data: {repr(stdin_data[:200])}\n")
-        sys.exit(0)
+        sys.exit(1)
     except Exception as e:
         # Log other errors for debugging
         with open('/tmp/hook_debug.log', 'a') as f:

@@ -132,8 +132,13 @@ Provide ONLY the summary, no additional text or formatting."""
                     request_options={"timeout": 60}  # 60 second timeout
                 )
                 
-                print(f"DEBUG: AI response received: '{response.text.strip()}'", file=sys.stderr)
-                return response.text.strip()
+                # Check if response has valid content before accessing .text
+                if response.candidates and response.candidates[0].content.parts:
+                    print(f"DEBUG: AI response received: '{response.text.strip()}'", file=sys.stderr)
+                    return response.text.strip()
+                else:
+                    print(f"DEBUG: AI response blocked - finish_reason: {response.candidates[0].finish_reason if response.candidates else 'unknown'}", file=sys.stderr)
+                    return None
     except Exception as e:
         # Log error for debugging
         print(f"DEBUG: AI summary failed with exception: {e}", file=sys.stderr)

@@ -294,23 +294,29 @@ def format_tool_entry(tool_name, tool_input, tool_response, timestamp):
     
     return entry
 
-def extract_conversation(transcript_path, session_id, processed_uuids_file):
-    """Extract conversation messages that haven't been processed yet"""
+def extract_all_conversations(transcript_path, transcript_dir):
+    """Extract conversation messages for ALL sessions found in transcript file"""
+    from collections import defaultdict
     
-    # Read previously processed UUIDs
-    processed_uuids = set()
-    if os.path.exists(processed_uuids_file):
-        try:
-            with open(processed_uuids_file, 'r') as f:
-                for line in f:
-                    uuid = line.strip()
-                    if uuid:
-                        processed_uuids.add(uuid)
-        except:
-            pass
+    # Group data by session_id - this is the key improvement!
+    sessions_data = defaultdict(lambda: {'processed_uuids': set(), 'conversation': [], 'new_uuids': []})
     
-    conversation = []
-    new_uuids = []
+    # Load processed UUIDs for each session
+    for session_file in os.listdir(transcript_dir):
+        if session_file.startswith('.last-message-'):
+            session_id = session_file.replace('.last-message-', '')
+            processed_uuids_file = os.path.join(transcript_dir, session_file)
+            
+            try:
+                with open(processed_uuids_file, 'r') as f:
+                    for line in f:
+                        uuid = line.strip()
+                        if uuid:
+                            sessions_data[session_id]['processed_uuids'].add(uuid)
+            except (OSError, IOError) as e:
+                # More specific exception handling as recommended by expert review
+                with open('/tmp/hook_debug.log', 'a') as f:
+                    f.write(f"[{datetime.now()}] Error reading processed UUIDs from {processed_uuids_file}: {e}\n")
     
     try:
         with open(transcript_path, 'r') as f:
@@ -321,14 +327,16 @@ def extract_conversation(transcript_path, session_id, processed_uuids_file):
                 try:
                     entry = json.loads(line)
                     
-                    if entry.get('sessionId') != session_id:
+                    # Get session_id from the entry itself, not from input parameter
+                    entry_session_id = entry.get('sessionId')
+                    if not entry_session_id:
                         continue
                     
                     entry_uuid = entry.get('uuid')
                     entry_type = entry.get('type', 'unknown')
                     
-                    # Skip if already processed
-                    if entry_uuid and entry_uuid in processed_uuids:
+                    # Skip if already processed for this session
+                    if entry_uuid and entry_uuid in sessions_data[entry_session_id]['processed_uuids']:
                         continue
                     
                     # Only process user/assistant messages
@@ -337,9 +345,9 @@ def extract_conversation(transcript_path, session_id, processed_uuids_file):
                         role = message.get('role', 'unknown')
                         content = message.get('content', [])
                         
-                        # Track new UUID
+                        # Track new UUID for this session
                         if entry_uuid:
-                            new_uuids.append(entry_uuid)
+                            sessions_data[entry_session_id]['new_uuids'].append(entry_uuid)
                         
                         # Extract text content
                         text_parts = []
@@ -363,15 +371,26 @@ def extract_conversation(transcript_path, session_id, processed_uuids_file):
                                     msg = f"👤 **User:** {full_text}"
                                 else:
                                     msg = f"🤖 **Assistant:** {full_text}"
-                                conversation.append(msg)
+                                sessions_data[entry_session_id]['conversation'].append(msg)
                 
-                except:
+                except json.JSONDecodeError as e:
+                    # More specific exception handling as recommended by expert review
+                    with open('/tmp/hook_debug.log', 'a') as f:
+                        f.write(f"[{datetime.now()}] JSON decode error in transcript: {e}\n")
+                    continue
+                except Exception as e:
+                    with open('/tmp/hook_debug.log', 'a') as f:
+                        f.write(f"[{datetime.now()}] Unexpected error processing transcript line: {e}\n")
                     continue
                     
-    except:
-        pass
+    except (OSError, IOError) as e:
+        with open('/tmp/hook_debug.log', 'a') as f:
+            f.write(f"[{datetime.now()}] Error reading transcript file {transcript_path}: {e}\n")
     
-    return conversation, new_uuids
+    # Convert to regular dict and return
+    return {session_id: (data['conversation'], data['new_uuids']) 
+            for session_id, data in sessions_data.items() 
+            if data['conversation'] or data['new_uuids']}
 
 def main():
     """Main function to process and log tool usage"""
@@ -379,6 +398,15 @@ def main():
     # Always log that hook was called for debugging
     with open('/tmp/hook_debug.log', 'a') as f:
         f.write(f"[{datetime.now()}] Hook called\n")
+        # Log environment information that might help identify configuration source
+        f.write(f"[{datetime.now()}] Script location: {__file__}\n")
+        f.write(f"[{datetime.now()}] Working directory: {os.getcwd()}\n")
+        f.write(f"[{datetime.now()}] PYTHONPATH: {os.environ.get('PYTHONPATH', 'Not set')}\n")
+        # Log if we can find configuration files
+        project_config = "/home/michael/dev/Mobius/.claude/settings.json"
+        global_config = "/home/michael/.claude/settings.json"
+        f.write(f"[{datetime.now()}] Project config exists: {os.path.exists(project_config)}\n")
+        f.write(f"[{datetime.now()}] Global config exists: {os.path.exists(global_config)}\n")
     
     # Initialize session file
     initialize_session_file()
@@ -415,6 +443,12 @@ def main():
     # Debug log the extracted values
     with open('/tmp/hook_debug.log', 'a') as f:
         f.write(f"[{datetime.now()}] tool_name='{tool_name}', session_id='{session_id}', transcript_path='{transcript_path}'\n")
+        # Log if this session already has a .last-message file
+        if session_id and transcript_path:
+            transcript_dir = os.path.dirname(transcript_path)
+            potential_last_message_file = f"{transcript_dir}/.last-message-{session_id}"
+            has_last_message = os.path.exists(potential_last_message_file)
+            f.write(f"[{datetime.now()}] Session {session_id} has existing .last-message file: {has_last_message}\n")
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -435,43 +469,50 @@ def main():
             f.write(f"[{datetime.now()}] Missing required fields: session_id='{session_id}', transcript_path='{transcript_path}'\n")
         sys.exit(0)
     
-    # Extract conversation (we already verified we have required info above)
+    # Extract conversations for ALL sessions (we already verified we have required info above)
     conversation_text = ""
     if os.path.exists(transcript_path):
-        # Use file locking to prevent race conditions
-        lock_file = f"{last_message_file}.lock"
+        transcript_dir = os.path.dirname(transcript_path)
+        
+        # Use file locking to prevent race conditions - lock the transcript directory
+        lock_file = f"{transcript_dir}/.extract_lock"
         
         try:
             # Try to acquire lock with timeout
             lock_fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             
             try:
-                # Create .last-message file if it doesn't exist (for sessions without prior tool usage)
-                if not os.path.exists(last_message_file):
-                    with open('/tmp/hook_debug.log', 'a') as f:
-                        f.write(f"[{datetime.now()}] Creating new .last-message file: {last_message_file}\n")
-                    with open(last_message_file, 'w') as f:
-                        f.write("")  # Create empty file
-                else:
-                    with open('/tmp/hook_debug.log', 'a') as f:
-                        f.write(f"[{datetime.now()}] .last-message file already exists: {last_message_file}\n")
+                # Extract conversations for ALL sessions found in transcript
+                sessions_conversations = extract_all_conversations(transcript_path, transcript_dir)
                 
-                # Extract conversation
-                conversation, new_uuids = extract_conversation(
-                    transcript_path, session_id, last_message_file
-                )
+                with open('/tmp/hook_debug.log', 'a') as f:
+                    f.write(f"[{datetime.now()}] Found {len(sessions_conversations)} sessions in transcript\n")
                 
-                if conversation:
-                    conversation_text = f"""
+                # Process each session's conversation and update its .last-message file
+                for session_id_found, (conversation, new_uuids) in sessions_conversations.items():
+                    session_last_message_file = f"{transcript_dir}/.last-message-{session_id_found}"
+                    
+                    # Create .last-message file if it doesn't exist
+                    if not os.path.exists(session_last_message_file):
+                        with open('/tmp/hook_debug.log', 'a') as f:
+                            f.write(f"[{datetime.now()}] Creating new .last-message file: {session_last_message_file}\n")
+                        with open(session_last_message_file, 'w') as f:
+                            f.write("")  # Create empty file
+                    
+                    # Update processed UUIDs for this session
+                    if new_uuids:
+                        with open('/tmp/hook_debug.log', 'a') as f:
+                            f.write(f"[{datetime.now()}] Adding {len(new_uuids)} new UUIDs for session {session_id_found}\n")
+                        with open(session_last_message_file, 'a') as f:
+                            for uuid in new_uuids:
+                                f.write(uuid + '\n')
+                    
+                    # If this is the current session, include conversation in session file
+                    if session_id_found == session_id and conversation:
+                        conversation_text = f"""
 
 💬 **Recent Conversation:**
 {chr(10).join(conversation)}"""
-                
-                # Update processed UUIDs
-                if new_uuids:
-                    with open(last_message_file, 'a') as f:
-                        for uuid in new_uuids:
-                            f.write(uuid + '\n')
                             
             finally:
                 # Release lock

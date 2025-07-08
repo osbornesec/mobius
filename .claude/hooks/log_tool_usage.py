@@ -339,15 +339,15 @@ def extract_all_conversations(transcript_path, transcript_dir):
                     if entry_uuid and entry_uuid in sessions_data[entry_session_id]['processed_uuids']:
                         continue
                     
-                    # Only process user/assistant messages
+                    # Track new UUID for this session (for ALL entry types)
+                    if entry_uuid:
+                        sessions_data[entry_session_id]['new_uuids'].append(entry_uuid)
+                    
+                    # Only process user/assistant messages for conversation extraction
                     if entry_type in ['user', 'assistant']:
                         message = entry.get('message', {})
                         role = message.get('role', 'unknown')
                         content = message.get('content', [])
-                        
-                        # Track new UUID for this session
-                        if entry_uuid:
-                            sessions_data[entry_session_id]['new_uuids'].append(entry_uuid)
                         
                         # Extract text content
                         text_parts = []

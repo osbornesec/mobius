@@ -17,9 +17,6 @@ if [ ! -f "$SESSION_FILE_PATH" ]; then
 - **Project**: Mobius
 - **Working Directory**: /home/michael/dev/Mobius/
 
-## Goals
-[To be defined - What would you like to work on in this session?]
-
 ## Progress
 EOF
 fi

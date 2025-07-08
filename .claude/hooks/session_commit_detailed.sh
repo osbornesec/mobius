@@ -149,9 +149,6 @@ if git commit -F "$TEMP_FILE"; then
 - **Working Directory**: $(pwd)
 - **Previous Session**: Archived as $ARCHIVE_NAME
 
-## Goals
-[To be defined - What would you like to work on in this session?]
-
 ## Progress
 EOF
   

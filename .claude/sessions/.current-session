@@ -1,74 +1,9 @@
-# Development Session - 2025-07-07 19:51
+# Development Session - 2025-07-07 19:57
 
 ## Session Overview
-- **Start Time**: July 07, 2025 at 19:51
+- **Start Time**: July 07, 2025 at 19:57
 - **Project**: dev/Mobius  
 - **Working Directory**: /home/michael/dev/Mobius
-- **Previous Session**: Archived as session_20250707_195148_committed.md
+- **Previous Session**: Archived as session_20250707_195705_committed.md
 
 ## Progress
-
-### [2025-07-07 19:51:56] Bash Command
-
-**Description:** Check latest commit with debug output
-**Command:** `git log -1 --oneline`
-**Output:**
-```
-eba2ca4 [hooks] Enhanced Claude hooks: session_commit_detailed, generate_commit_summary
-```
-
-### [2025-07-07 19:55:38] Bash Command
-
-**Description:** Commit changes to test debug output
-**Command:** `git add -A && git commit -m "Test commit to debug AI summary generation with enhanced logging"`
-**Output:**
-```
-[fix/session-commit-workflow 6a0343d] Test commit to debug AI summary generation with enhanced logging
- 3 files changed, 100 insertions(+), 6 deletions(-)
- create mode 100644 .claude/sessions/archive/session_20250707_194711_committed.md
- create mode 100644 .claude/sessions/archive/session_20250707_195148_committed.md
-```
-
-### [2025-07-07 19:55:43] Bash Command
-
-**Description:** Show the full commit details including message
-**Command:** `git show --name-only`
-**Output:**
-```
-commit 6a0343df8db07d9530e40d4302325a77df9090da
-Author: Michael Osborne <michael@michaelosborne.tech>
-Date:   Mon Jul 7 19:55:38 2025 -0500
-
-    Test commit to debug AI summary generation with enhanced logging
-
-.claude/sessions/.current-session
-.claude/sessions/archive/session_20250707_194711_committed.md
-.claude/sessions/archive/session_20250707_195148_committed.md
-```
-
-### [2025-07-07 19:55:49] Bash Command
-
-**Description:** Check recent session files
-**Command:** `ls -la .claude/sessions/archive/ | tail -5`
-**Output:**
-```
--rw-r--r-- 1 michael michael    929 Jul  7 19:30 session_20250707_193043_committed.md
--rw-r--r-- 1 michael michael   4924 Jul  7 19:36 session_20250707_193635_committed.md
--rw-r--r-- 1 michael michael   1652 Jul  7 19:41 session_20250707_194157_committed.md
--rw-r--r-- 1 michael michael    609 Jul  7 19:47 session_20250707_194711_committed.md
--rw-r--r-- 1 michael michael   2406 Jul  7 19:51 session_20250707_195148_committed.md
-```
-
-### [2025-07-07 19:55:57] Bash Command
-
-**Description:** Test pre_tool_use hook manually
-**Command:** `python3 .claude/hooks/pre_tool_use.py git commit -m "test"`
-**Output:**
-```
-
-```
-
-### [2025-07-07 19:56:00] File Read
-
-**File:** `/home/michael/dev/Mobius/.claude/settings.json`
-**Lines:** 95

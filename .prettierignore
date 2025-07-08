@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Coverage reports
+coverage/
+.coverage
+htmlcov/
+*.lcov
+
+# Test outputs
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment files
+.env*
+
+# Generated files
+*.min.js
+*.min.css
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Python files (handled by Black/Ruff)
+*.py
+*.pyi
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Documentation build
+docs/_build/
+site/
+
+# Temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

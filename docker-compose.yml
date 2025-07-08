@@ -1,5 +1,4 @@
 # Mobius Context Engine - Development Environment
-version: '3.8'
 
 services:
   # PostgreSQL with pgvector extension
@@ -21,11 +20,15 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
+    networks:
+      - mobius-network
 
   # Redis for caching
   redis:
     image: redis:7-alpine
     container_name: mobius-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
@@ -35,6 +38,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s
+    networks:
+      - mobius-network
 
   # Qdrant vector database
   qdrant:
@@ -48,18 +54,25 @@ services:
     environment:
       QDRANT__SERVICE__HTTP_PORT: 6333
       QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: INFO
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/6333' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+    networks:
+      - mobius-network
 
   # FastAPI Backend
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    # Using a placeholder image until backend directory is created
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
+    image: python:3.11-slim
     container_name: mobius-backend
+    command: ["sh", "-c", "echo 'Backend placeholder - waiting for implementation' && sleep infinity"]
     ports:
       - "8000:8000"
     environment:
@@ -67,6 +80,9 @@ services:
       REDIS_URL: redis://redis:6379
       QDRANT_URL: http://qdrant:6333
       ENVIRONMENT: development
+      # Additional environment variables for better dev experience
+      PYTHONUNBUFFERED: 1
+      LOG_LEVEL: DEBUG
     volumes:
       - ./backend:/app
     depends_on:
@@ -77,25 +93,54 @@ services:
       qdrant:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/6333' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mobius-network
 
   # React Frontend (development)
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+    # Using a placeholder image until frontend directory is created
+    # build:
+    #   context: ./frontend
+    #   dockerfile: Dockerfile.dev
+    image: node:18-alpine
     container_name: mobius-frontend
+    command: ["sh", "-c", "echo 'Frontend placeholder - waiting for implementation' && sleep infinity"]
     ports:
       - "3000:3000"
     environment:
       REACT_APP_API_URL: http://localhost:8000
+      # Additional environment variables for React development
+      CHOKIDAR_USEPOLLING: "true"  # For hot reload in Docker
+      WATCHPACK_POLLING: "true"
+      NODE_ENV: development
     volumes:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
       - backend
     restart: unless-stopped
+    stdin_open: true  # Keep stdin open for interactive mode
+    tty: true  # Allocate a pseudo-TTY
+    networks:
+      - mobius-network
+
+networks:
+  mobius-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
   qdrant_data:
+    driver: local

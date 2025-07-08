@@ -77,7 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/michael/dev/Mobius/.claude/hooks/log_tool_usage.sh"
+            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/log_tool_usage.py"
           }
         ]
       },

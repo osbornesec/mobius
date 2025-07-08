@@ -1,0 +1,252 @@
+# EditorConfig helps maintain consistent coding styles across different editors and IDEs
+# editorconfig.org
+
+root = true
+
+# Default settings for all files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# Python files
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+quote_type = double
+
+# Python stub files
+[*.pyi]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# JavaScript and TypeScript files
+[*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+quote_type = single
+
+# JSON files
+[*.json]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+insert_final_newline = true
+
+# JSON with comments
+[*.{jsonc,json5}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# YAML files
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+quote_type = double
+
+# Markdown files
+[*.{md,mdx}]
+trim_trailing_whitespace = false
+max_line_length = 80
+indent_size = 2
+
+# reStructuredText files
+[*.rst]
+indent_style = space
+indent_size = 3
+max_line_length = 80
+
+# HTML and template files
+[*.{html,htm,vue,svelte}]
+indent_style = space
+indent_size = 2
+max_line_length = 120
+
+# XML files
+[*.{xml,svg,xhtml,xsd,xsl,xslt}]
+indent_style = space
+indent_size = 2
+max_line_length = 120
+
+# CSS and preprocessor files
+[*.{css,scss,sass,less,styl}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# Shell scripts
+[*.{sh,bash,zsh,fish}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+shell_variant = bash
+
+# PowerShell scripts
+[*.{ps1,psm1,psd1}]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Batch files
+[*.{bat,cmd}]
+end_of_line = crlf
+indent_style = space
+indent_size = 2
+
+# Dockerfiles
+[{Dockerfile,Dockerfile.*,dockerfile,dockerfile.*}]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Docker Compose files
+[{docker-compose.yml,docker-compose.yaml,compose.yml,compose.yaml}]
+indent_style = space
+indent_size = 2
+
+# Makefiles require tabs
+[{Makefile,makefile,GNUmakefile,*.mk}]
+indent_style = tab
+indent_size = 4
+
+# Go files
+[*.go]
+indent_style = tab
+indent_size = 4
+max_line_length = 120
+
+# Rust files
+[*.rs]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# C/C++ files
+[*.{c,h,cpp,hpp,cc,cxx}]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Java files
+[*.java]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Kotlin files
+[*.{kt,kts}]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# Ruby files
+[*.rb]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# PHP files
+[*.php]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+# Configuration files
+[*.{ini,toml,cfg,conf}]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+# INI files specifically
+[*.ini]
+indent_style = space
+indent_size = 4
+
+# TOML files specifically
+[*.toml]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# Git configuration files
+[{.gitignore,.gitattributes,.gitmodules}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# GitHub Actions
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Environment files
+[{.env,.env.*,*.env}]
+insert_final_newline = false
+indent_style = space
+indent_size = 2
+quote_type = double
+
+# SQL files
+[*.sql]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# GraphQL files
+[*.{graphql,gql}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# Protocol Buffer files
+[*.proto]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# Terraform files
+[*.{tf,tfvars}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# Jupyter Notebooks
+[*.ipynb]
+indent_style = space
+indent_size = 4
+
+# LaTeX files
+[*.{tex,cls,sty}]
+indent_style = space
+indent_size = 2
+max_line_length = 80
+
+# License files
+[{LICENSE,LICENSE.*,COPYING,NOTICE}]
+insert_final_newline = false
+max_line_length = 80
+
+# Lock files - do not modify
+[{package-lock.json,yarn.lock,pnpm-lock.yaml,poetry.lock,Pipfile.lock,Cargo.lock}]
+insert_final_newline = true
+trim_trailing_whitespace = false
+indent_size = unset
+indent_style = unset
+
+# Binary files - do not modify
+[*.{jpg,jpeg,png,gif,ico,pdf,bin,exe,dll,so,dylib,woff,woff2,ttf,otf,eot}]
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+charset = unset
+end_of_line = unset
+indent_style = unset
+indent_size = unset

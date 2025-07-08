@@ -7,9 +7,13 @@ from datetime import datetime
 import fcntl
 import time
 import re
+from pathlib import Path
 
-SESSION_FILE_PATH = "/home/michael/dev/Mobius/.claude/sessions/.current-session"
-SESSIONS_DIR = "/home/michael/dev/Mobius/.claude/sessions"
+# Dynamically determine paths based on script location
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent  # Go up two levels: hooks -> .claude -> project root
+SESSIONS_DIR = PROJECT_ROOT / ".claude" / "sessions"
+SESSION_FILE_PATH = SESSIONS_DIR / ".current-session"
 
 # Sensitive patterns to redact
 SENSITIVE_PATTERNS = [
@@ -148,15 +152,15 @@ def is_sensitive_file(file_path):
 
 def initialize_session_file():
     """Create session file if it doesn't exist"""
-    if not os.path.exists(SESSION_FILE_PATH):
-        os.makedirs(SESSIONS_DIR, exist_ok=True)
-        with open(SESSION_FILE_PATH, 'w') as f:
+    if not SESSION_FILE_PATH.exists():
+        SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(str(SESSION_FILE_PATH), 'w') as f:
             f.write(f"""# Development Session - {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
 ## Session Overview
 - **Start Time**: {datetime.now().strftime('%B %d, %Y at %H:%M')}
 - **Project**: Mobius
-- **Working Directory**: /home/michael/dev/Mobius/
+- **Working Directory**: {PROJECT_ROOT}/
 
 ## Progress
 """)
@@ -372,13 +376,33 @@ def extract_conversation(transcript_path, session_id, processed_uuids_file):
 def main():
     """Main function to process and log tool usage"""
     
+    # Always log that hook was called for debugging
+    with open('/tmp/hook_debug.log', 'a') as f:
+        f.write(f"[{datetime.now()}] Hook called\n")
+    
     # Initialize session file
     initialize_session_file()
     
     # Read JSON input from stdin
     try:
-        input_json = json.loads(sys.stdin.read())
-    except:
+        stdin_data = sys.stdin.read()
+        if not stdin_data.strip():
+            # Log empty input for debugging
+            with open('/tmp/hook_debug.log', 'a') as f:
+                f.write(f"[{datetime.now()}] Empty stdin input\n")
+            sys.exit(0)
+            
+        input_json = json.loads(stdin_data)
+    except json.JSONDecodeError as e:
+        # Log JSON parsing errors for debugging
+        with open('/tmp/hook_debug.log', 'a') as f:
+            f.write(f"[{datetime.now()}] JSON decode error: {e}\n")
+            f.write(f"Input data: {repr(stdin_data[:200])}\n")
+        sys.exit(0)
+    except Exception as e:
+        # Log other errors for debugging
+        with open('/tmp/hook_debug.log', 'a') as f:
+            f.write(f"[{datetime.now()}] Unexpected error: {e}\n")
         sys.exit(0)
     
     # Extract fields
@@ -387,6 +411,10 @@ def main():
     tool_response = input_json.get('tool_response', {})
     session_id = input_json.get('session_id', '')
     transcript_path = input_json.get('transcript_path', '')
+    
+    # Debug log the extracted values
+    with open('/tmp/hook_debug.log', 'a') as f:
+        f.write(f"[{datetime.now()}] tool_name='{tool_name}', session_id='{session_id}', transcript_path='{transcript_path}'\n")
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -397,8 +425,14 @@ def main():
     if session_id and transcript_path:
         transcript_dir = os.path.dirname(transcript_path)
         last_message_file = f"{transcript_dir}/.last-message-{session_id}"
+        
+        # Debug log the last message file path
+        with open('/tmp/hook_debug.log', 'a') as f:
+            f.write(f"[{datetime.now()}] Will create/update: {last_message_file}\n")
     else:
-        # Exit early if we don't have required info for conversation extraction
+        # Log missing required fields for debugging
+        with open('/tmp/hook_debug.log', 'a') as f:
+            f.write(f"[{datetime.now()}] Missing required fields: session_id='{session_id}', transcript_path='{transcript_path}'\n")
         sys.exit(0)
     
     # Extract conversation (we already verified we have required info above)
@@ -414,8 +448,13 @@ def main():
             try:
                 # Create .last-message file if it doesn't exist (for sessions without prior tool usage)
                 if not os.path.exists(last_message_file):
+                    with open('/tmp/hook_debug.log', 'a') as f:
+                        f.write(f"[{datetime.now()}] Creating new .last-message file: {last_message_file}\n")
                     with open(last_message_file, 'w') as f:
                         f.write("")  # Create empty file
+                else:
+                    with open('/tmp/hook_debug.log', 'a') as f:
+                        f.write(f"[{datetime.now()}] .last-message file already exists: {last_message_file}\n")
                 
                 # Extract conversation
                 conversation, new_uuids = extract_conversation(
@@ -444,7 +483,7 @@ def main():
             conversation_text = "\n\n💬 **Recent Conversation:** [Skipped - concurrent access]"
     
     # Write everything to session file
-    with open(SESSION_FILE_PATH, 'a') as f:
+    with open(str(SESSION_FILE_PATH), 'a') as f:
         f.write(log_entry)
         if conversation_text:
             f.write(conversation_text)

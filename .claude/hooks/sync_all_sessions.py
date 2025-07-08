@@ -4,9 +4,19 @@ import json
 import os
 import glob
 from datetime import datetime
+from pathlib import Path
 
-SESSIONS_DIR = "/home/michael/dev/Mobius/.claude/sessions"
-CLAUDE_PROJECTS_DIR = "/home/michael/.claude/projects/-home-michael-dev-Mobius"
+# Dynamically determine paths based on script location
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent  # Go up two levels: hooks -> .claude -> project root
+SESSIONS_DIR = PROJECT_ROOT / ".claude" / "sessions"
+
+# Dynamically construct Claude projects directory path
+# Convert project root path to Claude projects format (replace slashes with dashes, remove leading slash)
+project_path_str = str(PROJECT_ROOT).replace(os.sep, '-')
+if project_path_str.startswith('-'):
+    project_path_str = project_path_str[1:]
+CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects" / project_path_str
 
 def extract_all_messages(transcript_path, session_id):
     """Extract all conversation messages from a transcript file"""
@@ -68,31 +78,30 @@ def main():
     """Process all transcript files and create missing .last-message files"""
     
     # Find all transcript files for this project
-    transcript_files = glob.glob(f"{CLAUDE_PROJECTS_DIR}/*.jsonl")
+    transcript_files = list(CLAUDE_PROJECTS_DIR.glob("*.jsonl"))
     
     print(f"Found {len(transcript_files)} transcript files")
     
     for transcript_path in transcript_files:
         # Extract session ID from filename
-        filename = os.path.basename(transcript_path)
-        session_id = filename.replace('.jsonl', '')
+        session_id = transcript_path.stem  # Get filename without extension
         
-        last_message_file = f"{SESSIONS_DIR}/.last-message-{session_id}"
+        last_message_file = SESSIONS_DIR / f".last-message-{session_id}"
         
         # Check if .last-message file exists
-        if os.path.exists(last_message_file):
+        if last_message_file.exists():
             print(f"✓ {session_id}: .last-message file exists")
             continue
         
         print(f"⚠ {session_id}: Missing .last-message file, creating...")
         
         # Extract all messages and UUIDs
-        conversation, all_uuids = extract_all_messages(transcript_path, session_id)
+        conversation, all_uuids = extract_all_messages(str(transcript_path), session_id)
         
         if all_uuids:
             # Create .last-message file with all UUIDs
-            os.makedirs(SESSIONS_DIR, exist_ok=True)
-            with open(last_message_file, 'w') as f:
+            SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+            with open(str(last_message_file), 'w') as f:
                 for uuid in all_uuids:
                     f.write(uuid + '\n')
             

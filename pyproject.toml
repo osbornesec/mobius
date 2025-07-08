@@ -275,11 +275,9 @@ strict = true
 runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlalchemy.orm.DeclarativeBase"]
 runtime-evaluated-decorators = ["attrs.define", "attrs.frozen"]
 
-[tool.ruff.lint.flake8-tidy-imports]
-banned-api = {
-    "typing.TypedDict" = {msg = "Use typing_extensions.TypedDict for Python < 3.12 compatibility"},
-    "typing.Literal" = {msg = "Use typing_extensions.Literal for Python < 3.8 compatibility"},
-}
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.TypedDict" = "Use typing_extensions.TypedDict for Python < 3.12 compatibility"
+"typing.Literal" = "Use typing_extensions.Literal for Python < 3.8 compatibility"
 
 [tool.ruff.lint.flake8-unused-arguments]
 ignore-variadic-names = true
@@ -299,14 +297,12 @@ builtins-ignorelist = ["id", "format", "input", "type", "object", "filter", "map
 [tool.ruff.lint.flake8-simplify]
 max-fix-length = 100
 
-[tool.ruff.lint.flake8-import-conventions]
-aliases = {
-    "datetime" = "dt",
-    "numpy" = "np",
-    "pandas" = "pd",
-    "seaborn" = "sns",
-    "matplotlib.pyplot" = "plt",
-}
+[tool.ruff.lint.flake8-import-conventions.aliases]
+datetime = "dt"
+numpy = "np"
+pandas = "pd"
+seaborn = "sns"
+"matplotlib.pyplot" = "plt"
 
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = true

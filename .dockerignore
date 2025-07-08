@@ -160,9 +160,9 @@ temp/
 *.db-journal
 *.db-wal
 
-# Docker files (Dockerfile and .dockerignore shouldn't be in build context)
+# Docker files
 # Note: docker-compose files ARE needed for dev containers
-Dockerfile*
+# Dockerfile* - Commented out: Dockerfiles MUST be accessible during builds
 .dockerignore
 .docker/
 

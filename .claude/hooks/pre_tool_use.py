@@ -141,8 +141,8 @@ done
                     # npx or prettier not installed, skip silently
                     pass
                 except Exception as e:
-                    # Any other error, skip silently
-                    pass
+                    # Log other errors to stderr for visibility
+                    sys.stderr.write(f"⚠️  Prettier formatting error for {file_path}: {type(e).__name__}: {str(e)}\n")
 
 def main():
     try:

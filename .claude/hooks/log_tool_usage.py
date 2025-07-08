@@ -61,6 +61,10 @@ SENSITIVE_PATTERNS = [
     (r'JWT_SECRET=([^\s]+)', 'jwt_secret'),
 ]
 
+# Compile regex patterns once at module level for efficiency
+COMPILED_PATTERNS = [(re.compile(pattern, re.IGNORECASE | re.MULTILINE), label) 
+                     for pattern, label in SENSITIVE_PATTERNS]
+
 # Files that should never have their content logged
 SENSITIVE_FILES = [
     '.env',
@@ -85,26 +89,38 @@ def sanitize_text(text):
     if not text:
         return text
     
-    sanitized = text
-    
-    # Apply all sensitive patterns
-    for pattern, label in SENSITIVE_PATTERNS:
-        # Use case-insensitive matching
-        regex = re.compile(pattern, re.IGNORECASE | re.MULTILINE)
-        matches = regex.findall(sanitized)
-        
-        if matches:
-            # Replace each match with redacted version
-            for match in matches:
-                if isinstance(match, tuple):
-                    match = match[0]
-                if len(match) > 4:
+    # Create a replacer function that handles each match
+    def replacer(match):
+        # Find which pattern matched
+        for regex, label in COMPILED_PATTERNS:
+            if regex.match(match.group(0)):
+                # Extract the sensitive value (first capturing group if exists)
+                sensitive_value = match.group(1) if match.lastindex else match.group(0)
+                
+                if isinstance(sensitive_value, tuple):
+                    sensitive_value = sensitive_value[0]
+                    
+                if len(sensitive_value) > 4:
                     # Show first 2 and last 2 characters for partial identification
-                    replacement = f"[REDACTED-{label.upper()}:{match[:2]}...{match[-2:]}]"
+                    replacement = f"[REDACTED-{label.upper()}:{sensitive_value[:2]}...{sensitive_value[-2:]}]"
                 else:
                     replacement = f"[REDACTED-{label.upper()}]"
                 
-                sanitized = sanitized.replace(match, replacement)
+                # Replace only the sensitive part, preserving the rest of the match
+                if match.lastindex:
+                    return match.group(0).replace(sensitive_value, replacement)
+                else:
+                    return replacement
+        
+        # This shouldn't happen if patterns are properly configured
+        return match.group(0)
+    
+    # Combine all patterns into a single regex using alternation
+    combined_pattern = '|'.join(f'({pattern})' for pattern, _ in SENSITIVE_PATTERNS)
+    combined_regex = re.compile(combined_pattern, re.IGNORECASE | re.MULTILINE)
+    
+    # Apply all patterns in a single pass
+    sanitized = combined_regex.sub(replacer, text)
     
     # Also redact any line that contains common secret indicators
     lines = sanitized.split('\n')

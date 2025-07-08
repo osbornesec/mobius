@@ -7,7 +7,7 @@ rules:
   lowestEfficiency: 0.90
 
   # Fail if wasted space exceeds absolute size
-  highestWasteBytes: 20MB
+  highestWastedBytes: '20MB'
 
   # Fail if wasted space exceeds percentage
   highestUserWastedPercent: 0.10

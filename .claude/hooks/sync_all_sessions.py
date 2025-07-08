@@ -2,6 +2,7 @@
 """Sync all sessions - create missing .last-message files for sessions without tool usage"""
 import json
 import os
+import sys
 import glob
 from datetime import datetime
 from pathlib import Path
@@ -69,8 +70,8 @@ def extract_all_messages(transcript_path, session_id):
                 except json.JSONDecodeError:
                     continue
                     
-    except (IOError, OSError):
-        pass
+    except (IOError, OSError) as e:
+        sys.stderr.write(f"Error reading transcript file {transcript_path}: {type(e).__name__}: {str(e)}\n")
     
     return conversation, all_uuids
 

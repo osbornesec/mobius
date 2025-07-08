@@ -8,6 +8,8 @@ services:
   # FastAPI Backend - Production configuration
   backend:
     build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
       target: production  # Use production stage without dev dependencies
     command: ['uvicorn', 'app.main:app', '--host', '0.0.0.0', '--port', '8000', '--workers', '4']
     environment:
@@ -29,7 +31,12 @@ services:
 
   # PostgreSQL - Production settings
   postgres:
+    image: postgres:15-alpine
     restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mobius}
+      POSTGRES_USER: ${POSTGRES_USER:?Missing POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Missing POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Remove init.sql mount in production - should be handled by migrations
@@ -47,3 +54,6 @@ services:
       QDRANT__SERVICE__GRPC_PORT: 6334
       QDRANT__LOG_LEVEL: WARN
       QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?Missing QDRANT_API_KEY}
+
+volumes:
+  postgres_data:

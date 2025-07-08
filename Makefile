@@ -137,8 +137,8 @@ backend-test: ## Run backend tests
 .PHONY: backend-lint
 backend-lint: ## Run linting (black, ruff)
 	@echo -e "$(BLUE)Running backend linters...$(NC)"
-	$(PYTHON_BIN) -m black app/ tests/
-	$(PYTHON_BIN) -m ruff check app/ tests/ --fix
+	$(PYTHON_BIN) -m black --check app/ tests/
+	$(PYTHON_BIN) -m ruff check app/ tests/
 	@echo -e "$(GREEN)✓ Backend linting complete$(NC)"
 
 .PHONY: backend-typecheck

@@ -46,8 +46,8 @@ jobs:
 
       - name: Validate Docker Compose files
         run: |
-          docker-compose -f docker-compose.yml config > /dev/null
-          docker-compose -f docker-compose.prod.yml config > /dev/null
+          docker compose -f docker-compose.yml config > /dev/null
+          docker compose -f docker-compose.prod.yml config > /dev/null
 
   dive-analysis:
     name: Dive Image Analysis

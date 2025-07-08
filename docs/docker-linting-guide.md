@@ -85,14 +85,15 @@ label-schema:
 strict-labels: true
 
 # Override severity levels
-override:
-  error:
-    - DL3001 # Avoid using sudo
-    - DL3002 # Last user should not be root
-  warning:
-    - DL3018 # Pin versions in apk add
-  info:
-    - DL3059 # Multiple consecutive RUN instructions
+overrides:
+  - id: DL3001
+    severity: error # Avoid using sudo
+  - id: DL3002
+    severity: error # Last user should not be root
+  - id: DL3018
+    severity: warning # Pin versions in apk add
+  - id: DL3059
+    severity: info # Multiple consecutive RUN instructions
 ```
 
 ## Docker Compose Validation
@@ -383,17 +384,21 @@ ignored:
   - DL3008
 
 # Enforce security best practices
-override:
-  error:
-    - DL3002 # Last user should not be root
-    - DL3003 # Use WORKDIR instead of cd
-    - DL3004 # Do not use sudo
-    - DL3025 # Use --no-cache-dir with pip
-
-  warning:
-    - DL3013 # Pin versions in pip
-    - DL3018 # Pin versions in apk add
-    - DL3047 # Use COPY instead of ADD for files
+overrides:
+  - id: DL3002
+    severity: error # Last user should not be root
+  - id: DL3003
+    severity: error # Use WORKDIR instead of cd
+  - id: DL3004
+    severity: error # Do not use sudo
+  - id: DL3025
+    severity: error # Use --no-cache-dir with pip
+  - id: DL3013
+    severity: warning # Pin versions in pip
+  - id: DL3018
+    severity: warning # Pin versions in apk add
+  - id: DL3047
+    severity: warning # Use COPY instead of ADD for files
 
 # Mobius-specific labels
 label-schema:

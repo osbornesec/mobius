@@ -263,7 +263,6 @@ max-returns = 6
 max-statements = 50
 max-nested-blocks = 5
 max-public-methods = 20
-max-attributes = 10
 
 [tool.ruff.lint.flake8-annotations]
 allow-star-arg-any = false

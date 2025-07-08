@@ -176,6 +176,43 @@ pc.create_index(
 
 ## Migration Notes for Developers
 
+### Quick Start for New Developers
+
+Getting started with the Mobius platform is straightforward:
+
+1. **Clone the repository and set up environment**:
+   ```bash
+   git clone <repository-url>
+   cd Mobius
+   ```
+
+2. **Configure environment variables**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys and configuration
+   ```
+
+3. **Start the development environment**:
+   ```bash
+   make dev
+   ```
+
+4. **Access the applications**:
+   - Backend API: http://localhost:8000
+   - Frontend UI: http://localhost:3000
+   - API Documentation: http://localhost:8000/docs
+
+5. **Verify setup**:
+   - Check that both services are running without errors
+   - The frontend should connect to the backend automatically
+   - Test a simple API endpoint in the Swagger UI at `/docs`
+
+**Tips for new developers**:
+- The `make dev` command handles all dependency installation and service startup
+- Hot-reload is enabled for both frontend and backend during development
+- Check the logs if either service fails to start - common issues are port conflicts or missing environment variables
+- See the detailed setup instructions below for manual setup or troubleshooting
+
 ### Setting Up Development Environment
 
 1. **Python Environment**:

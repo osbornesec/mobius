@@ -276,6 +276,34 @@ clean: ## Clean all artifacts
 # Development Workflow Commands
 # =============================================
 
+.PHONY: onboard
+onboard: ## Set up new developer environment
+	@echo -e "$(BLUE)Welcome to Mobius! Setting up your development environment...$(NC)"
+	@echo ""
+	@if [ ! -f ".env" ]; then \
+		echo -e "$(BLUE)Creating .env file from .env.example...$(NC)"; \
+		cp .env.example .env; \
+		echo -e "$(GREEN)✓ .env file created$(NC)"; \
+		echo -e "$(YELLOW)→ Please update your .env file with your actual configuration values$(NC)"; \
+	else \
+		echo -e "$(YELLOW).env file already exists - skipping creation$(NC)"; \
+	fi
+	@echo ""
+	@echo -e "$(BLUE)Setting up Python virtual environment...$(NC)"
+	$(MAKE) backend-venv
+	@echo ""
+	@echo -e "$(BLUE)Installing all dependencies...$(NC)"
+	$(MAKE) install
+	@echo ""
+	@echo -e "$(GREEN)✓ Developer setup complete!$(NC)"
+	@echo ""
+	@echo -e "$(YELLOW)Next steps:$(NC)"
+	@echo -e "  1. Review and update your .env file with your configuration"
+	@echo -e "  2. Run 'make dev' to start the development environment"
+	@echo -e "  3. Run 'make help' to see all available commands"
+	@echo ""
+	@echo -e "$(BLUE)Happy coding! 🚀$(NC)"
+
 .PHONY: dev
 dev: ## Start full development environment
 	@echo -e "$(BLUE)Starting full development environment...$(NC)"

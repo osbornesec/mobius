@@ -66,6 +66,13 @@ services:
 
   # FastAPI Backend
   backend:
+    # NOTE: The 'image' and 'command' fields below are temporary placeholders for development
+    # They will be replaced with actual build configurations once the backend is implemented
+    # In production, this service will:
+    # - Build from ./backend/Dockerfile
+    # - Run the FastAPI application with uvicorn
+    # - Use proper health checks and startup scripts
+    
     # Using a placeholder image until backend directory is created
     # build:
     #   context: ./backend
@@ -104,6 +111,13 @@ services:
 
   # React Frontend (development)
   frontend:
+    # NOTE: The 'image' and 'command' fields below are temporary placeholders for development
+    # They will be replaced with actual build configurations once the frontend is implemented
+    # In production, this service will:
+    # - Build from ./frontend/Dockerfile.dev (for development) or Dockerfile (for production)
+    # - Run the React development server with hot reload
+    # - Use npm/yarn scripts defined in package.json
+    
     # Using a placeholder image until frontend directory is created
     # build:
     #   context: ./frontend

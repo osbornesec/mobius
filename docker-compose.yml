@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-mobius}
       POSTGRES_USER: ${POSTGRES_USER:-mobius}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mobius_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Missing POSTGRES_PASSWORD}
     ports:
       - '5432:5432'
     volumes:
@@ -73,7 +73,7 @@ services:
     ports:
       - '8000:8000'
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mobius}:${POSTGRES_PASSWORD:-mobius_dev_password}@postgres:5432/${POSTGRES_DB:-mobius}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mobius}:${POSTGRES_PASSWORD:?Missing POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mobius}
       REDIS_URL: redis://redis:6379
       QDRANT_URL: http://qdrant:6333
       ENVIRONMENT: development

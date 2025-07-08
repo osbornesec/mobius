@@ -80,8 +80,8 @@ Running: echo "y" | /home/michael/dev/Mobius/.claude/hooks/session_commit_detail
                         import time
                         
                         # Wait a moment to ensure session file is fully written
-                        print("⏳ Waiting 3 seconds for session to be fully captured...", file=sys.stderr)
-                        time.sleep(3)
+                        print("⏳ Waiting 30 seconds for session to be fully captured...", file=sys.stderr)
+                        time.sleep(30)
                         
                         result = subprocess.run(
                             'echo "y" | /home/michael/dev/Mobius/.claude/hooks/session_commit_detailed.sh',

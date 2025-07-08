@@ -46,8 +46,23 @@ jobs:
 
       - name: Validate Docker Compose files
         run: |
+          # Validate development docker-compose (has defaults)
+          echo "Validating docker-compose.yml..."
           docker compose -f docker-compose.yml config > /dev/null
+
+          # Validate production docker-compose with required env vars
+          # These are dummy values just for validation - not used in actual deployment
+          echo "Validating docker-compose.prod.yml..."
+          export POSTGRES_USER="${{ secrets.PROD_POSTGRES_USER || 'ci_validation' }}"
+          export POSTGRES_PASSWORD="${{ secrets.PROD_POSTGRES_PASSWORD || 'ci_validation_password' }}"
+          export REDIS_PASSWORD="${{ secrets.PROD_REDIS_PASSWORD || 'ci_validation_redis_password' }}"
+          export QDRANT_API_KEY="${{ secrets.PROD_QDRANT_API_KEY || 'ci_validation_qdrant_key' }}"
+
+          # Additional variables that might be needed
+          export POSTGRES_DB="${{ secrets.PROD_POSTGRES_DB || 'mobius' }}"
+
           docker compose -f docker-compose.prod.yml config > /dev/null
+          echo "✓ All docker-compose files validated successfully"
 
   dive-analysis:
     name: Dive Image Analysis

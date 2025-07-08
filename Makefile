@@ -38,6 +38,9 @@ DB_USER := mobius
 DB_HOST := localhost
 DB_PORT := 5432
 
+# Container names
+POSTGRES_CONTAINER := mobius-postgres
+
 # Service names
 SERVICES := postgres redis qdrant backend frontend
 
@@ -203,7 +206,7 @@ frontend-typecheck: ## Run TypeScript checking
 .PHONY: db-create
 db-create: ## Create database
 	@echo -e "$(BLUE)Creating database...$(NC)"
-	docker exec -it mobius-postgres psql -U $(DB_USER) -c "CREATE DATABASE $(DB_NAME);"
+	docker exec -it $(POSTGRES_CONTAINER) psql -U $(DB_USER) -c "CREATE DATABASE $(DB_NAME);"
 	@echo -e "$(GREEN)✓ Database created$(NC)"
 
 .PHONY: db-migrate
@@ -222,8 +225,8 @@ db-reset: ## Reset database
 	echo ""; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		echo -e "$(BLUE)Resetting database...$(NC)"; \
-		docker exec -it mobius-postgres psql -U $(DB_USER) -c "DROP DATABASE IF EXISTS $(DB_NAME);"; \
-		docker exec -it mobius-postgres psql -U $(DB_USER) -c "CREATE DATABASE $(DB_NAME);"; \
+		docker exec -it $(POSTGRES_CONTAINER) psql -U $(DB_USER) -c "DROP DATABASE IF EXISTS $(DB_NAME);"; \
+		docker exec -it $(POSTGRES_CONTAINER) psql -U $(DB_USER) -c "CREATE DATABASE $(DB_NAME);"; \
 		$(MAKE) db-migrate; \
 		echo -e "$(GREEN)✓ Database reset complete$(NC)"; \
 	fi
@@ -487,5 +490,5 @@ health: ## Check health of all services
 	@curl -s http://localhost:8000/health || echo -e "$(RED)✗ Backend not responding$(NC)"
 	@curl -s http://localhost:3000 > /dev/null && echo -e "$(GREEN)✓ Frontend responding$(NC)" || echo -e "$(RED)✗ Frontend not responding$(NC)"
 	@curl -s http://localhost:6333/health || echo -e "$(RED)✗ Qdrant not responding$(NC)"
-	@docker exec mobius-postgres pg_isready > /dev/null && echo -e "$(GREEN)✓ PostgreSQL ready$(NC)" || echo -e "$(RED)✗ PostgreSQL not ready$(NC)"
+	@docker exec $(POSTGRES_CONTAINER) pg_isready > /dev/null && echo -e "$(GREEN)✓ PostgreSQL ready$(NC)" || echo -e "$(RED)✗ PostgreSQL not ready$(NC)"
 	@docker exec mobius-redis redis-cli ping > /dev/null && echo -e "$(GREEN)✓ Redis ready$(NC)" || echo -e "$(RED)✗ Redis not ready$(NC)"

@@ -66,10 +66,10 @@ def extract_all_messages(transcript_path, session_id):
                             if full_text:
                                 conversation.append((role, full_text))
                 
-                except:
+                except json.JSONDecodeError:
                     continue
                     
-    except:
+    except (IOError, OSError):
         pass
     
     return conversation, all_uuids

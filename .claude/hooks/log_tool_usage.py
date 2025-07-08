@@ -471,9 +471,40 @@ def main():
     
     # Extract conversations for ALL sessions (we already verified we have required info above)
     conversation_text = ""
-    if os.path.exists(transcript_path):
-        transcript_dir = os.path.dirname(transcript_path)
+    transcript_dir = os.path.dirname(transcript_path)
+    
+    # If the provided transcript doesn't exist, find the session in other files
+    if not os.path.exists(transcript_path):
+        with open('/tmp/hook_debug.log', 'a') as f:
+            f.write(f"[{datetime.now()}] WARNING: Transcript file doesn't exist: {transcript_path}\n")
+            f.write(f"[{datetime.now()}] Searching for session {session_id} in all transcript files...\n")
         
+        # Find which file(s) contain this session
+        import glob
+        found_in_files = []
+        for jsonl_file in glob.glob(os.path.join(transcript_dir, "*.jsonl")):
+            try:
+                with open(jsonl_file, 'r') as f:
+                    for line in f:
+                        if line.strip() and f'"sessionId":"{session_id}"' in line:
+                            found_in_files.append(jsonl_file)
+                            break
+            except Exception as e:
+                with open('/tmp/hook_debug.log', 'a') as f:
+                    f.write(f"[{datetime.now()}] Error checking {jsonl_file}: {e}\n")
+        
+        if found_in_files:
+            with open('/tmp/hook_debug.log', 'a') as f:
+                f.write(f"[{datetime.now()}] Found session {session_id} in: {found_in_files}\n")
+            # Use the first file found (could be improved to handle multiple files)
+            transcript_path = found_in_files[0]
+        else:
+            with open('/tmp/hook_debug.log', 'a') as f:
+                f.write(f"[{datetime.now()}] Session {session_id} not found in any transcript files!\n")
+            # Exit early if session not found anywhere
+            return
+    
+    if os.path.exists(transcript_path):
         # Use file locking to prevent race conditions - lock the transcript directory
         lock_file = f"{transcript_dir}/.extract_lock"
         

@@ -13,13 +13,13 @@ RED := \033[0;31m
 NC := \033[0m # No Color
 
 # Project directories
-BACKEND_DIR := backend
+BACKEND_DIR := .
 FRONTEND_DIR := frontend
 DOCKER_DIR := docker
 
 # Python settings
-PYTHON := python3.11
-VENV := $(BACKEND_DIR)/venv
+PYTHON := python3
+VENV := ./venv
 PIP := $(VENV)/bin/pip
 PYTHON_BIN := $(VENV)/bin/python
 
@@ -31,7 +31,6 @@ PNPM := pnpm
 # Docker settings
 DOCKER_COMPOSE := docker-compose
 DOCKER_COMPOSE_FILE := docker-compose.yml
-DOCKER_COMPOSE_DEV := docker-compose.dev.yml
 
 # Database settings
 DB_NAME := mobius_db
@@ -59,13 +58,13 @@ help: ## Show this help message
 .PHONY: up
 up: ## Start all services with docker-compose
 	@echo -e "$(BLUE)Starting all services...$(NC)"
-	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) -f $(DOCKER_COMPOSE_DEV) up -d
+	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) up -d
 	@echo -e "$(GREEN)✓ All services started$(NC)"
 
 .PHONY: down
 down: ## Stop all services
 	@echo -e "$(BLUE)Stopping all services...$(NC)"
-	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) -f $(DOCKER_COMPOSE_DEV) down
+	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) down
 	@echo -e "$(GREEN)✓ All services stopped$(NC)"
 
 .PHONY: restart
@@ -74,15 +73,15 @@ restart: down up ## Restart all services
 .PHONY: logs
 logs: ## Show logs for all services (use SERVICE=<service> for specific service)
 	@if [ -z "$(SERVICE)" ]; then \
-		$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) -f $(DOCKER_COMPOSE_DEV) logs -f; \
+		$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) logs -f; \
 	else \
-		$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) -f $(DOCKER_COMPOSE_DEV) logs -f $(SERVICE); \
+		$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) logs -f $(SERVICE); \
 	fi
 
 .PHONY: ps
 ps: ## Show running containers
 	@echo -e "$(BLUE)Running containers:$(NC)"
-	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) -f $(DOCKER_COMPOSE_DEV) ps
+	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) ps
 
 .PHONY: docker-clean
 docker-clean: ## Clean up volumes and containers
@@ -91,7 +90,7 @@ docker-clean: ## Clean up volumes and containers
 	echo ""; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		echo -e "$(BLUE)Cleaning up Docker resources...$(NC)"; \
-		$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) -f $(DOCKER_COMPOSE_DEV) down -v --remove-orphans; \
+		$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) down -v --remove-orphans; \
 		docker system prune -f; \
 		echo -e "$(GREEN)✓ Docker cleanup complete$(NC)"; \
 	fi
@@ -104,7 +103,7 @@ docker-clean: ## Clean up volumes and containers
 backend-venv: ## Create Python virtual environment
 	@if [ ! -d "$(VENV)" ]; then \
 		echo -e "$(BLUE)Creating Python virtual environment...$(NC)"; \
-		cd $(BACKEND_DIR) && $(PYTHON) -m venv venv; \
+		$(PYTHON) -m venv venv; \
 		echo -e "$(GREEN)✓ Virtual environment created$(NC)"; \
 	else \
 		echo -e "$(YELLOW)Virtual environment already exists$(NC)"; \
@@ -113,43 +112,43 @@ backend-venv: ## Create Python virtual environment
 .PHONY: backend-install
 backend-install: backend-venv ## Install Python dependencies
 	@echo -e "$(BLUE)Installing backend dependencies...$(NC)"
-	cd $(BACKEND_DIR) && $(PIP) install --upgrade pip
-	cd $(BACKEND_DIR) && $(PIP) install -r requirements.txt
-	cd $(BACKEND_DIR) && $(PIP) install -r requirements-dev.txt
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
+	$(PIP) install -r requirements-dev.txt
 	@echo -e "$(GREEN)✓ Backend dependencies installed$(NC)"
 
 .PHONY: backend-dev
 backend-dev: ## Run backend in development mode
 	@echo -e "$(BLUE)Starting backend development server...$(NC)"
-	cd $(BACKEND_DIR) && $(PYTHON_BIN) -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	$(PYTHON_BIN) -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 .PHONY: backend-test
 backend-test: ## Run backend tests
 	@echo -e "$(BLUE)Running backend tests...$(NC)"
-	cd $(BACKEND_DIR) && $(PYTHON_BIN) -m pytest tests/ -v
+	$(PYTHON_BIN) -m pytest tests/ -v
 
 .PHONY: backend-lint
 backend-lint: ## Run linting (black, ruff)
 	@echo -e "$(BLUE)Running backend linters...$(NC)"
-	cd $(BACKEND_DIR) && $(PYTHON_BIN) -m black app/ tests/
-	cd $(BACKEND_DIR) && $(PYTHON_BIN) -m ruff check app/ tests/ --fix
+	$(PYTHON_BIN) -m black app/ tests/
+	$(PYTHON_BIN) -m ruff check app/ tests/ --fix
 	@echo -e "$(GREEN)✓ Backend linting complete$(NC)"
 
 .PHONY: backend-typecheck
 backend-typecheck: ## Run mypy type checking
 	@echo -e "$(BLUE)Running backend type checking...$(NC)"
-	cd $(BACKEND_DIR) && $(PYTHON_BIN) -m mypy app/
+	$(PYTHON_BIN) -m mypy app/
 	@echo -e "$(GREEN)✓ Backend type checking complete$(NC)"
 
 .PHONY: backend-coverage
 backend-coverage: ## Run tests with coverage
 	@echo -e "$(BLUE)Running backend tests with coverage...$(NC)"
-	cd $(BACKEND_DIR) && $(PYTHON_BIN) -m pytest tests/ --cov=app --cov-report=html --cov-report=term
+	$(PYTHON_BIN) -m pytest tests/ --cov=app --cov-report=html --cov-report=term
 
 .PHONY: backend-migrate
 backend-migrate: ## Run database migrations
 	@echo -e "$(BLUE)Running database migrations...$(NC)"
-	cd $(BACKEND_DIR) && $(PYTHON_BIN) -m alembic upgrade head
+	$(PYTHON_BIN) -m alembic upgrade head
 	@echo -e "$(GREEN)✓ Database migrations complete$(NC)"
 
 # =============================================
@@ -206,7 +205,7 @@ db-migrate: backend-migrate ## Run migrations (alias for backend-migrate)
 .PHONY: db-seed
 db-seed: ## Seed database with test data
 	@echo -e "$(BLUE)Seeding database...$(NC)"
-	cd $(BACKEND_DIR) && $(PYTHON_BIN) -m scripts.seed_database
+	$(PYTHON_BIN) -m scripts.seed_database
 	@echo -e "$(GREEN)✓ Database seeded$(NC)"
 
 .PHONY: db-reset
@@ -339,9 +338,11 @@ ci: ## Run CI pipeline
 build: ## Build all components for production
 	@echo -e "$(BLUE)Building for production...$(NC)"
 	$(MAKE) frontend-build
-	docker build -f $(DOCKER_DIR)/Dockerfile.backend -t mobius-backend:latest $(BACKEND_DIR)
-	docker build -f $(DOCKER_DIR)/Dockerfile.frontend -t mobius-frontend:latest $(FRONTEND_DIR)
-	@echo -e "$(GREEN)✓ Production build complete$(NC)"
+	# TODO: Uncomment when Dockerfiles are created
+	# docker build -f $(DOCKER_DIR)/Dockerfile.backend -t mobius-backend:latest .
+	# docker build -f $(DOCKER_DIR)/Dockerfile.frontend -t mobius-frontend:latest $(FRONTEND_DIR)
+	@echo -e "$(YELLOW)Note: Docker build commands are commented out until Dockerfiles are created$(NC)"
+	@echo -e "$(GREEN)✓ Frontend build complete$(NC)"
 
 # =============================================
 # Monitoring Commands
@@ -353,7 +354,7 @@ monitor: ## Show service health and logs
 	$(MAKE) ps
 	@echo ""
 	@echo -e "$(BLUE)Recent Logs:$(NC)"
-	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) -f $(DOCKER_COMPOSE_DEV) logs --tail=20
+	$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) logs --tail=20
 
 .PHONY: health
 health: ## Check health of all services

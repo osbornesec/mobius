@@ -66,20 +66,11 @@ services:
 
   # FastAPI Backend
   backend:
-    # NOTE: The 'image' and 'command' fields below are temporary placeholders for development
-    # They will be replaced with actual build configurations once the backend is implemented
-    # In production, this service will:
-    # - Build from ./backend/Dockerfile
-    # - Run the FastAPI application with uvicorn
-    # - Use proper health checks and startup scripts
-    
-    # Using a placeholder image until backend directory is created
-    # build:
-    #   context: ./backend
-    #   dockerfile: Dockerfile
-    image: python:3.11-slim
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
     container_name: mobius-backend
-    command: ["sh", "-c", "echo 'Backend placeholder - waiting for implementation' && sleep infinity"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "8000:8000"
     environment:
@@ -91,7 +82,7 @@ services:
       PYTHONUNBUFFERED: 1
       LOG_LEVEL: DEBUG
     volumes:
-      - ./backend:/app
+      - ./app:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,20 +102,11 @@ services:
 
   # React Frontend (development)
   frontend:
-    # NOTE: The 'image' and 'command' fields below are temporary placeholders for development
-    # They will be replaced with actual build configurations once the frontend is implemented
-    # In production, this service will:
-    # - Build from ./frontend/Dockerfile.dev (for development) or Dockerfile (for production)
-    # - Run the React development server with hot reload
-    # - Use npm/yarn scripts defined in package.json
-    
-    # Using a placeholder image until frontend directory is created
-    # build:
-    #   context: ./frontend
-    #   dockerfile: Dockerfile.dev
-    image: node:18-alpine
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend/Dockerfile.dev
     container_name: mobius-frontend
-    command: ["sh", "-c", "echo 'Frontend placeholder - waiting for implementation' && sleep infinity"]
+    command: ["npm", "start"]
     ports:
       - "3000:3000"
     environment:

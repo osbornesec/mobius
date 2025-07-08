@@ -101,7 +101,7 @@ def try_ai_summary(diff_content, session_content):
                 import google.generativeai as genai
                 
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-2.5-pro')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 
                 prompt = f"""Analyze these git changes and session activity to write a concise 1-2 line commit message summary.
 Focus on WHAT was changed and WHY it matters.
@@ -119,7 +119,8 @@ Provide ONLY the summary, no additional text or formatting."""
                     generation_config=genai.types.GenerationConfig(
                         max_output_tokens=500,
                         temperature=0.3,
-                    )
+                    ),
+                    request_options={"timeout": 60}  # 60 second timeout
                 )
                 
                 return response.text.strip()

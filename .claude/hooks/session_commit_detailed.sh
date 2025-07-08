@@ -57,10 +57,7 @@ fi
 SESSION_CONTENT=$(cat "$SESSION_FILE")
 
 # Generate AI summary of changes
-echo -e "${BLUE}Generating AI summary of changes...${NC}"
-
 # Additional delay to ensure session is fully captured
-echo -e "${YELLOW}Waiting 2 more seconds for session completion...${NC}"
 sleep 2
 
 # Re-read session content after delay
@@ -73,16 +70,8 @@ git diff --cached > "$TEMP_DIFF"
 # Extract key changes from session file for context
 RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20)
 
-# Use the AI summary generator with timeout
-DEBUG_LOG="/home/michael/dev/Mobius/.claude/hooks/session_commit_debug.log"
-echo "$(date): Starting AI summary generation..." >> "$DEBUG_LOG"
-echo -e "${BLUE}Calling AI summary generator...${NC}" >&2
-AI_SUMMARY=$(echo "$SESSION_CONTENT" | timeout 360 python3 /home/michael/dev/Mobius/.claude/hooks/generate_commit_summary.py "$TEMP_DIFF" 2>>"$DEBUG_LOG")
-AI_EXIT_CODE=$?
-echo "$(date): AI summary exit code: $AI_EXIT_CODE" >> "$DEBUG_LOG"
-echo "$(date): AI summary result: '$AI_SUMMARY'" >> "$DEBUG_LOG"
-echo -e "${BLUE}AI summary exit code: $AI_EXIT_CODE${NC}" >&2
-echo -e "${BLUE}AI summary result: '$AI_SUMMARY'${NC}" >&2
+# Use the AI summary generator
+AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 /home/michael/dev/Mobius/.claude/hooks/generate_commit_summary.py "$TEMP_DIFF" 2>/dev/null)
 
 # Clean up temp file
 rm -f "$TEMP_DIFF"

@@ -85,31 +85,23 @@ def analyze_session(session_content):
 
 def try_ai_summary(diff_content, session_content):
     """Try to generate summary using Google Gemini"""
-    print("DEBUG: Starting AI summary generation...", file=sys.stderr)
     try:
         # Try to get API key for Google/Gemini
         api_key_script = os.path.join(os.path.dirname(__file__), 'get_api_key.py')
-        print(f"DEBUG: Looking for API key script at: {api_key_script}", file=sys.stderr)
-        print(f"DEBUG: Script exists: {os.path.exists(api_key_script)}", file=sys.stderr)
         if os.path.exists(api_key_script):
             result = subprocess.run(
                 [sys.executable, api_key_script, 'google'],
                 capture_output=True,
                 text=True
             )
-            print(f"DEBUG: API key script result: {result.returncode}", file=sys.stderr)
             if result.returncode == 0 and result.stdout.strip():
                 api_key = result.stdout.strip()
-                print("DEBUG: API key obtained successfully", file=sys.stderr)
                 
                 # Use Google Gemini API
-                print("DEBUG: Importing google.generativeai...", file=sys.stderr)
                 import google.generativeai as genai
                 
-                print("DEBUG: Configuring genai...", file=sys.stderr)
                 genai.configure(api_key=api_key)
                 model = genai.GenerativeModel('gemini-2.5-flash-lite-preview-06-17')
-                print("DEBUG: Model initialized", file=sys.stderr)
                 
                 # Use raw diff content with size limit
                 prompt_diff = diff_content[:3000] if diff_content else "No diff content"
@@ -130,7 +122,6 @@ Write a comprehensive commit message that:
 
 Provide only the commit message text (title + body if appropriate)."""
                 
-                print("DEBUG: Generating content with Gemini...", file=sys.stderr)
                 response = model.generate_content(
                     prompt,
                     generation_config=genai.types.GenerationConfig(
@@ -154,40 +145,29 @@ Provide only the commit message text (title + body if appropriate)."""
                             "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
                             "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
                         },
-                    ],
-                    request_options={"timeout": 60}  # 60 second timeout
+                    ]
                 )
                 
-                # Better response validation and error handling
+                # Response validation and error handling
                 if hasattr(response, 'candidates') and response.candidates:
                     candidate = response.candidates[0]
                     if hasattr(candidate, 'finish_reason'):
-                        print(f"DEBUG: Finish reason: {candidate.finish_reason}", file=sys.stderr)
-                        
                         # Check if content was blocked
                         if candidate.finish_reason in [2, 'SAFETY']:  # 2 is SAFETY finish reason
-                            print("DEBUG: Content blocked by safety filters", file=sys.stderr)
                             return None
                     
                     # Try to access the text content safely
                     try:
                         if hasattr(response, 'text') and response.text:
-                            print(f"DEBUG: AI response received: '{response.text.strip()}'", file=sys.stderr)
                             return response.text.strip()
                         else:
-                            print("DEBUG: No text content in response", file=sys.stderr)
                             return None
-                    except Exception as text_error:
-                        print(f"DEBUG: Error accessing response text: {text_error}", file=sys.stderr)
+                    except Exception:
                         return None
                 else:
-                    print("DEBUG: No candidates in response", file=sys.stderr)
                     return None
-    except Exception as e:
-        # Log error for debugging
-        print(f"DEBUG: AI summary failed with exception: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
+    except Exception:
+        pass
     
     return None
 
@@ -262,14 +242,10 @@ def main():
     summary = try_ai_summary(diff_content, session_content)
     
     if not summary:
-        print("DEBUG: AI summary failed, falling back to rule-based analysis", file=sys.stderr)
         # Fall back to rule-based analysis
         diff_analysis = analyze_diff(diff_content)
         session_analysis = analyze_session(session_content)
         summary = generate_summary(diff_analysis, session_analysis)
-        print(f"DEBUG: Rule-based summary: '{summary}'", file=sys.stderr)
-    else:
-        print(f"DEBUG: Using AI summary: '{summary}'", file=sys.stderr)
     
     print(summary)
 

@@ -100,7 +100,7 @@ def sanitize_text(text):
                 if isinstance(sensitive_value, tuple):
                     sensitive_value = sensitive_value[0]
                     
-                if len(sensitive_value) > 4:
+                if sensitive_value and len(sensitive_value) > 4:
                     # Show first 2 and last 2 characters for partial identification
                     replacement = f"[REDACTED-{label.upper()}:{sensitive_value[:2]}...{sensitive_value[-2:]}]"
                 else:

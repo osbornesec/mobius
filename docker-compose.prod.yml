@@ -43,11 +43,13 @@ services:
 
   # Redis - Production settings
   redis:
+    image: redis:7-alpine
     restart: always
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?Missing REDIS_PASSWORD}
 
   # Qdrant - Production settings
   qdrant:
+    image: qdrant/qdrant:latest
     restart: always
     environment:
       QDRANT__SERVICE__HTTP_PORT: 6333

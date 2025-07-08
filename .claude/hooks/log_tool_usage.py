@@ -403,10 +403,10 @@ def main():
         f.write(f"[{datetime.now()}] Working directory: {os.getcwd()}\n")
         f.write(f"[{datetime.now()}] PYTHONPATH: {os.environ.get('PYTHONPATH', 'Not set')}\n")
         # Log if we can find configuration files
-        project_config = "/home/michael/dev/Mobius/.claude/settings.json"
-        global_config = "/home/michael/.claude/settings.json"
-        f.write(f"[{datetime.now()}] Project config exists: {os.path.exists(project_config)}\n")
-        f.write(f"[{datetime.now()}] Global config exists: {os.path.exists(global_config)}\n")
+        project_config = PROJECT_ROOT / ".claude" / "settings.json"
+        global_config = Path.home() / ".claude" / "settings.json"
+        f.write(f"[{datetime.now()}] Project config exists: {project_config.exists()}\n")
+        f.write(f"[{datetime.now()}] Global config exists: {global_config.exists()}\n")
     
     # Initialize session file
     initialize_session_file()

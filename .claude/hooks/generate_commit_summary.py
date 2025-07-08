@@ -108,7 +108,7 @@ def try_ai_summary(diff_content, session_content):
                 
                 print("DEBUG: Configuring genai...", file=sys.stderr)
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash-lite-preview-06-17')
                 print("DEBUG: Model initialized", file=sys.stderr)
                 
                 # Use raw diff content with size limit
@@ -138,22 +138,22 @@ Provide only the commit message text (title + body if appropriate)."""
                         temperature=0.3,
                     ),
                     safety_settings=[
-                        genai.types.SafetySetting(
-                            category=genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                            threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        ),
-                        genai.types.SafetySetting(
-                            category=genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                            threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        ),
-                        genai.types.SafetySetting(
-                            category=genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                            threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        ),
-                        genai.types.SafetySetting(
-                            category=genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                            threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        ),
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        },
+                        {
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        },
                     ],
                     request_options={"timeout": 60}  # 60 second timeout
                 )

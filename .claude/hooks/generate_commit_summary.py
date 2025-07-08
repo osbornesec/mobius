@@ -111,16 +111,29 @@ def try_ai_summary(diff_content, session_content):
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 print("DEBUG: Model initialized", file=sys.stderr)
                 
-                prompt = f"""Analyze these git changes and session activity to write a concise 1-2 line commit message summary.
-Focus on WHAT was changed and WHY it matters.
+                # Extract high-level information instead of raw diff
+                changed_files = []
+                if diff_content:
+                    for line in diff_content.split('\n'):
+                        if line.startswith('diff --git'):
+                            file_path = line.split('b/')[-1] if 'b/' in line else line.split()[-1]
+                            changed_files.append(file_path)
+                
+                # Extract key activities from session without raw content
+                activities = []
+                if session_content:
+                    for line in session_content.split('\n'):
+                        if any(keyword in line.lower() for keyword in ['file write', 'file edit', 'bash command', 'read', 'created', 'modified', 'fixed', 'added']):
+                            activities.append(line.strip())
+                
+                prompt = f"""Create a concise commit message summary based on this development activity:
 
-Git diff (first 2000 chars):
-{diff_content[:2000]}
+Files changed: {', '.join(changed_files[:10])}
+Key activities: {'; '.join(activities[-5:])[:500]}
 
-Recent session activity:
-{session_content[-2000:]}
-
-Provide ONLY the summary, no additional text or formatting."""
+Write a 1-2 line commit message that describes what was accomplished.
+Focus on the purpose and impact, not implementation details.
+Provide ONLY the summary, no additional text."""
                 
                 print("DEBUG: Generating content with Gemini...", file=sys.stderr)
                 response = model.generate_content(

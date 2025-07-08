@@ -393,13 +393,6 @@ lint-all-docker: lint-docker lint-compose ## Run all Docker lints
 .PHONY: install-lint-tools
 install-lint-tools: ## Install Docker linting tools
 	@echo -e "$(BLUE)Installing Docker linting tools...$(NC)"
-	@# Install pre-commit
-	@if command -v pip >/dev/null 2>&1; then \
-		pip install pre-commit; \
-	else \
-		echo -e "$(YELLOW)pip not found. Please install Python and pip first.$(NC)"; \
-		exit 1; \
-	fi
 	@# Install hadolint
 	@echo -e "$(BLUE)Installing hadolint...$(NC)"
 	@if [ "$$(uname)" = "Darwin" ]; then \
@@ -435,12 +428,6 @@ install-lint-tools: ## Install Docker linting tools
 		rm /tmp/dive.tar.gz; \
 		echo -e "$(YELLOW)dive installed to ~/.local/bin/dive$(NC)"; \
 		echo -e "$(YELLOW)Make sure ~/.local/bin is in your PATH$(NC)"; \
-	fi
-	@# Install pre-commit hooks
-	@if [ -f ".pre-commit-config.yaml" ]; then \
-		echo -e "$(BLUE)Installing pre-commit hooks...$(NC)"; \
-		pre-commit install; \
-		echo -e "$(GREEN)✓ Pre-commit hooks installed$(NC)"; \
 	fi
 	@echo -e "$(GREEN)✓ Docker linting tools installed successfully$(NC)"
 

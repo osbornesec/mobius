@@ -95,20 +95,6 @@ override:
     - DL3059 # Multiple consecutive RUN instructions
 ```
 
-### Pre-commit Integration
-
-Create or update `.pre-commit-config.yaml`:
-
-```yaml
-# .pre-commit-config.yaml
-repos:
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
-    hooks:
-      - id: hadolint
-        args: ['--config', '.hadolint.yaml']
-```
-
 ## Docker Compose Validation
 
 ### Docker Compose Config Validation
@@ -199,46 +185,36 @@ docker run --rm -it \
 
 ## Integration Strategies
 
-### 1. Pre-commit Hooks
+### 1. Git Hooks (Manual Setup)
 
-Complete `.pre-commit-config.yaml` for Mobius:
-
-```yaml
-# .pre-commit-config.yaml
-default_language_version:
-  python: python3.11
-
-repos:
-  # Hadolint for Dockerfiles
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
-    hooks:
-      - id: hadolint
-        args: ['--config', '.hadolint.yaml']
-
-  # Shell script linting (for entrypoint scripts)
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.9.0.6
-    hooks:
-      - id: shellcheck
-        files: docker/.*\.(sh|bash)$
-
-  # General file checks
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-        exclude: ^charts/.*
-```
-
-Install pre-commit:
+For teams that want to enforce linting on commit, you can set up Git hooks
+manually:
 
 ```bash
-pip install pre-commit
-pre-commit install
-pre-commit run --all-files  # Run on all files
+# Create a pre-commit hook
+cat > .git/hooks/pre-commit << 'EOF'
+#!/bin/bash
+# Run Docker linting before commit
+
+echo "Running Docker linting..."
+
+# Check if hadolint is installed
+if command -v hadolint >/dev/null 2>&1; then
+    hadolint --config .hadolint.yaml docker/backend/Dockerfile
+    hadolint --config .hadolint.yaml docker/frontend/Dockerfile.dev
+else
+    echo "Warning: hadolint not installed. Skipping Dockerfile linting."
+fi
+
+# Validate Docker Compose files
+docker-compose -f docker-compose.yml config > /dev/null || exit 1
+docker-compose -f docker-compose.prod.yml config > /dev/null || exit 1
+
+echo "Docker linting passed!"
+EOF
+
+# Make the hook executable
+chmod +x .git/hooks/pre-commit
 ```
 
 ### 2. VSCode Extensions
@@ -361,11 +337,9 @@ Add to existing `Makefile`:
 # Install linting tools
 install-lint-tools:
 	@echo "Installing Docker linting tools..."
-	@pip install pre-commit
 	@wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
 	@chmod +x /tmp/hadolint
 	@sudo mv /tmp/hadolint /usr/local/bin/hadolint || mv /tmp/hadolint ~/.local/bin/hadolint
-	@pre-commit install
 	@echo "Docker linting tools installed successfully"
 
 # Lint Dockerfiles
@@ -552,9 +526,8 @@ hadolint --fix docker/backend/Dockerfile
 1. Install the linting tools: `make install-lint-tools`
 2. Run initial lint check: `make lint-all-docker`
 3. Fix any issues found
-4. Add pre-commit hooks: `pre-commit install`
-5. Configure your IDE with recommended extensions
-6. Set up CI/CD workflows for automated checks
+4. Configure your IDE with recommended extensions
+5. Set up CI/CD workflows for automated checks
 
 This guide ensures consistent, secure, and optimized Docker configurations
 across the Mobius platform, aligning with the project's high standards for code

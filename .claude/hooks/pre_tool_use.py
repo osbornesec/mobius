@@ -1,11 +1,13 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.8"
+# dependencies = []
 # ///
 
 import json
 import sys
 import re
+import subprocess
 from pathlib import Path
 
 def is_env_file_access(tool_name, tool_input):
@@ -38,6 +40,73 @@ def is_env_file_access(tool_name, tool_input):
     
     return False
 
+def format_with_prettier(tool_name, tool_input):
+    """
+    Format files with Prettier when they're being edited or written.
+    Supports YAML, JSON, JavaScript, TypeScript, CSS, and more.
+    """
+    if tool_name in ['Edit', 'MultiEdit', 'Write']:
+        file_path = tool_input.get('file_path', '')
+        file_path_obj = Path(file_path)
+        
+        # Check if it's a file type that Prettier supports
+        prettier_extensions = {
+            '.yml', '.yaml', '.json', '.js', '.jsx', '.ts', '.tsx', 
+            '.css', '.scss', '.less', '.html', '.md', '.mdx'
+        }
+        
+        if any(file_path.endswith(ext) for ext in prettier_extensions):
+            # For Write operations, we'll need to format after the write
+            # For Edit/MultiEdit, we can suggest formatting
+            if tool_name in ['Edit', 'MultiEdit'] and file_path_obj.exists():
+                try:
+                    # Try to find prettier executable
+                    prettier_paths = [
+                        Path.cwd() / 'node_modules' / '.bin' / 'prettier',
+                        Path.home() / '.npm' / 'bin' / 'prettier',
+                    ]
+                    
+                    prettier_cmd = None
+                    for prettier_path in prettier_paths:
+                        if prettier_path.exists():
+                            prettier_cmd = str(prettier_path)
+                            break
+                    
+                    # If not found in common locations, try npx
+                    if not prettier_cmd:
+                        prettier_cmd = 'npx'
+                        prettier_args = ['prettier', '--write', str(file_path_obj)]
+                    else:
+                        prettier_args = [prettier_cmd, '--write', str(file_path_obj)]
+                    
+                    # Set up environment
+                    import os
+                    env = os.environ.copy()
+                    env['LC_ALL'] = 'C'
+                    
+                    # Run prettier to format the file
+                    result = subprocess.run(
+                        prettier_args,
+                        capture_output=True,
+                        text=True,
+                        cwd=Path.cwd(),
+                        env=env
+                    )
+                    
+                    if result.returncode == 0:
+                        print(f"✨ Formatted {file_path} with Prettier", file=sys.stderr)
+                    elif 'prettier' not in result.stderr.lower() or 'not found' not in result.stderr.lower():
+                        # Only show errors if it's not a "prettier not found" error
+                        print(f"⚠️  Prettier formatting failed for {file_path}:", file=sys.stderr)
+                        if result.stderr:
+                            print(result.stderr, file=sys.stderr)
+                except FileNotFoundError:
+                    # npx or prettier not installed, skip silently
+                    pass
+                except Exception as e:
+                    # Any other error, skip silently
+                    pass
+
 def main():
     try:
         # Read JSON input from stdin
@@ -51,6 +120,9 @@ def main():
             print("BLOCKED: Access to .env files containing sensitive data is prohibited", file=sys.stderr)
             print("Use .env.sample for template files instead", file=sys.stderr)
             sys.exit(2)  # Exit code 2 blocks tool call and shows error to Claude
+        
+        # Format files with Prettier
+        format_with_prettier(tool_name, tool_input)
         
         if tool_name == 'Bash':
             command = tool_input.get('command', '')

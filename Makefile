@@ -33,8 +33,8 @@ DOCKER_COMPOSE := docker-compose
 DOCKER_COMPOSE_FILE := docker-compose.yml
 
 # Database settings
-DB_NAME := mobius_db
-DB_USER := mobius_user
+DB_NAME := mobius
+DB_USER := mobius
 DB_HOST := localhost
 DB_PORT := 5432
 
@@ -106,7 +106,14 @@ backend-venv: ## Create Python virtual environment
 		$(PYTHON) -m venv venv; \
 		echo -e "$(GREEN)✓ Virtual environment created$(NC)"; \
 	else \
-		echo -e "$(YELLOW)Virtual environment already exists$(NC)"; \
+		if [ ! -f "$(VENV)/bin/activate" ] || [ ! -f "$(VENV)/bin/python" ]; then \
+			echo -e "$(RED)✗ Virtual environment exists but appears corrupted or incomplete$(NC)"; \
+			echo -e "$(RED)  Missing essential files: $(VENV)/bin/activate or $(VENV)/bin/python$(NC)"; \
+			echo -e "$(YELLOW)  To fix: Remove the directory with 'rm -rf $(VENV)' and run 'make backend-venv' again$(NC)"; \
+			exit 1; \
+		else \
+			echo -e "$(YELLOW)Virtual environment already exists and appears valid$(NC)"; \
+		fi; \
 	fi
 
 .PHONY: backend-install

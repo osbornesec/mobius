@@ -646,7 +646,6 @@ elasticsearch-data/
 solr-data/
 
 # Claude-specific
-.claude/sessions/archive/
-.claude/sessions/.current-session
+.claude/sessions/
 
 # End of .gitignore

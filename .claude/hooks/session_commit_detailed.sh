@@ -59,6 +59,13 @@ SESSION_CONTENT=$(cat "$SESSION_FILE")
 # Generate AI summary of changes
 echo -e "${BLUE}Generating AI summary of changes...${NC}"
 
+# Additional delay to ensure session is fully captured
+echo -e "${YELLOW}Waiting 2 more seconds for session completion...${NC}"
+sleep 2
+
+# Re-read session content after delay
+SESSION_CONTENT=$(cat "$SESSION_FILE")
+
 # Create a temporary file with staged changes
 TEMP_DIFF="/tmp/staged_changes_$$.diff"
 git diff --cached > "$TEMP_DIFF"

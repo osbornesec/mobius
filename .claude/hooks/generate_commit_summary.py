@@ -111,38 +111,21 @@ def try_ai_summary(diff_content, session_content):
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 print("DEBUG: Model initialized", file=sys.stderr)
                 
-                # Mask diff content to avoid safety filters
-                masked_diff = ""
-                if diff_content:
-                    lines = diff_content.split('\n')
-                    for line in lines[:100]:  # Limit to first 100 lines
-                        # Remove diff markers and make it look like regular text
-                        if line.startswith('diff --git'):
-                            file_path = line.split('b/')[-1] if 'b/' in line else line.split()[-1]
-                            masked_diff += f"Modified file: {file_path}\n"
-                        elif line.startswith('+++') or line.startswith('---'):
-                            continue  # Skip file markers
-                        elif line.startswith('+'):
-                            masked_diff += f"Added: {line[1:].strip()}\n"
-                        elif line.startswith('-'):
-                            masked_diff += f"Removed: {line[1:].strip()}\n"
-                        elif line.startswith('@@'):
-                            masked_diff += f"Location: {line}\n"
-                        else:
-                            if line.strip():
-                                masked_diff += f"Context: {line.strip()}\n"
-                
-                prompt = f"""Analyze this code modification summary to create a concise commit message:
+                prompt = f"""Analyze these git changes and session activity to write a detailed commit message.
 
-File Changes Summary:
-{masked_diff[:1500]}
+Git diff:
+{diff_content[:3000]}
 
-Session Context:
-{session_content[-500:] if session_content else 'No session data'}
+Recent session activity:
+{session_content[-1000:] if session_content else 'No session data'}
 
-Create a clear 1-2 line commit message that explains what was changed and why.
-Focus on the technical purpose and impact.
-Provide only the commit message text."""
+Write a comprehensive commit message that:
+- Uses a clear, descriptive title (50-72 characters)
+- Includes a detailed body explaining what was changed and why
+- Focuses on the technical purpose and business impact
+- Uses proper commit message format with title and body
+
+Provide only the commit message text (title + body if needed)."""
                 
                 print("DEBUG: Generating content with Gemini...", file=sys.stderr)
                 response = model.generate_content(

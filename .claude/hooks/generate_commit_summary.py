@@ -85,23 +85,31 @@ def analyze_session(session_content):
 
 def try_ai_summary(diff_content, session_content):
     """Try to generate summary using Google Gemini"""
+    print("DEBUG: Starting AI summary generation...", file=sys.stderr)
     try:
         # Try to get API key for Google/Gemini
         api_key_script = os.path.join(os.path.dirname(__file__), 'get_api_key.py')
+        print(f"DEBUG: Looking for API key script at: {api_key_script}", file=sys.stderr)
+        print(f"DEBUG: Script exists: {os.path.exists(api_key_script)}", file=sys.stderr)
         if os.path.exists(api_key_script):
             result = subprocess.run(
                 [sys.executable, api_key_script, 'google'],
                 capture_output=True,
                 text=True
             )
+            print(f"DEBUG: API key script result: {result.returncode}", file=sys.stderr)
             if result.returncode == 0 and result.stdout.strip():
                 api_key = result.stdout.strip()
+                print("DEBUG: API key obtained successfully", file=sys.stderr)
                 
                 # Use Google Gemini API
+                print("DEBUG: Importing google.generativeai...", file=sys.stderr)
                 import google.generativeai as genai
                 
+                print("DEBUG: Configuring genai...", file=sys.stderr)
                 genai.configure(api_key=api_key)
                 model = genai.GenerativeModel('gemini-2.5-flash')
+                print("DEBUG: Model initialized", file=sys.stderr)
                 
                 prompt = f"""Analyze these git changes and session activity to write a concise 1-2 line commit message summary.
 Focus on WHAT was changed and WHY it matters.
@@ -114,6 +122,7 @@ Recent session activity:
 
 Provide ONLY the summary, no additional text or formatting."""
                 
+                print("DEBUG: Generating content with Gemini...", file=sys.stderr)
                 response = model.generate_content(
                     prompt,
                     generation_config=genai.types.GenerationConfig(
@@ -123,11 +132,13 @@ Provide ONLY the summary, no additional text or formatting."""
                     request_options={"timeout": 60}  # 60 second timeout
                 )
                 
+                print(f"DEBUG: AI response received: '{response.text.strip()}'", file=sys.stderr)
                 return response.text.strip()
     except Exception as e:
-        # Log error for debugging (optional)
-        # print(f"AI summary failed: {e}", file=sys.stderr)
-        pass
+        # Log error for debugging
+        print(f"DEBUG: AI summary failed with exception: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
     
     return None
 
@@ -202,10 +213,14 @@ def main():
     summary = try_ai_summary(diff_content, session_content)
     
     if not summary:
+        print("DEBUG: AI summary failed, falling back to rule-based analysis", file=sys.stderr)
         # Fall back to rule-based analysis
         diff_analysis = analyze_diff(diff_content)
         session_analysis = analyze_session(session_content)
         summary = generate_summary(diff_analysis, session_analysis)
+        print(f"DEBUG: Rule-based summary: '{summary}'", file=sys.stderr)
+    else:
+        print(f"DEBUG: Using AI summary: '{summary}'", file=sys.stderr)
     
     print(summary)
 

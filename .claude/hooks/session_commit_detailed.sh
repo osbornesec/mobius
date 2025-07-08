@@ -74,7 +74,11 @@ git diff --cached > "$TEMP_DIFF"
 RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20)
 
 # Use the AI summary generator with timeout
+echo -e "${BLUE}Calling AI summary generator...${NC}" >&2
 AI_SUMMARY=$(echo "$SESSION_CONTENT" | timeout 360 python3 /home/michael/dev/Mobius/.claude/hooks/generate_commit_summary.py "$TEMP_DIFF")
+AI_EXIT_CODE=$?
+echo -e "${BLUE}AI summary exit code: $AI_EXIT_CODE${NC}" >&2
+echo -e "${BLUE}AI summary result: '$AI_SUMMARY'${NC}" >&2
 
 # Clean up temp file
 rm -f "$TEMP_DIFF"

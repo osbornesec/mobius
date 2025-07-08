@@ -153,20 +153,20 @@ Provide only the commit message text."""
                     ),
                     safety_settings=[
                         {
-                            "category": "HARM_CATEGORY_HATE_SPEECH",
-                            "threshold": "BLOCK_NONE",
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
                         },
                         {
-                            "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                            "threshold": "BLOCK_NONE",
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
                         },
                         {
-                            "category": "HARM_CATEGORY_HARASSMENT",
-                            "threshold": "BLOCK_NONE",
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
                         },
                         {
-                            "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                            "threshold": "BLOCK_NONE",
+                            "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
                         },
                     ],
                     request_options={"timeout": 60}  # 60 second timeout

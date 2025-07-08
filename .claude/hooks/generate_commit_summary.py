@@ -111,27 +111,13 @@ def try_ai_summary(diff_content, session_content):
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 print("DEBUG: Model initialized", file=sys.stderr)
                 
-                # Clean diff content while preserving structure
-                cleaned_diff = ""
-                if diff_content:
-                    lines = diff_content.split('\n')
-                    for line in lines[:150]:  # More lines than before
-                        if line.startswith('diff --git'):
-                            file_path = line.split('b/')[-1] if 'b/' in line else line.split()[-1]
-                            cleaned_diff += f"File: {file_path}\n"
-                        elif line.startswith('@@'):
-                            cleaned_diff += f"Section: {line.replace('@@', '').strip()}\n"
-                        elif line.startswith('+') and not line.startswith('+++'):
-                            cleaned_diff += f"+ {line[1:].strip()}\n"
-                        elif line.startswith('-') and not line.startswith('---'):
-                            cleaned_diff += f"- {line[1:].strip()}\n"
-                        elif line.strip() and not line.startswith('index') and not line.startswith('new file') and not line.startswith('deleted file'):
-                            cleaned_diff += f"  {line.strip()}\n"
+                # Use raw diff content with size limit
+                prompt_diff = diff_content[:3000] if diff_content else "No diff content"
                 
                 prompt = f"""Analyze these code changes and development session to write a detailed commit message.
 
 Code Changes:
-{cleaned_diff[:2500]}
+{prompt_diff}
 
 Development Session Context:
 {session_content[-800:] if session_content else 'No session data'}
@@ -152,32 +138,50 @@ Provide only the commit message text (title + body if appropriate)."""
                         temperature=0.3,
                     ),
                     safety_settings=[
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        },
+                        genai.types.SafetySetting(
+                            category=genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        genai.types.SafetySetting(
+                            category=genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        genai.types.SafetySetting(
+                            category=genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        genai.types.SafetySetting(
+                            category=genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            threshold=genai.types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
                     ],
                     request_options={"timeout": 60}  # 60 second timeout
                 )
                 
-                # Check if response has valid content before accessing .text
-                if response.candidates and response.candidates[0].content.parts:
-                    print(f"DEBUG: AI response received: '{response.text.strip()}'", file=sys.stderr)
-                    return response.text.strip()
+                # Better response validation and error handling
+                if hasattr(response, 'candidates') and response.candidates:
+                    candidate = response.candidates[0]
+                    if hasattr(candidate, 'finish_reason'):
+                        print(f"DEBUG: Finish reason: {candidate.finish_reason}", file=sys.stderr)
+                        
+                        # Check if content was blocked
+                        if candidate.finish_reason in [2, 'SAFETY']:  # 2 is SAFETY finish reason
+                            print("DEBUG: Content blocked by safety filters", file=sys.stderr)
+                            return None
+                    
+                    # Try to access the text content safely
+                    try:
+                        if hasattr(response, 'text') and response.text:
+                            print(f"DEBUG: AI response received: '{response.text.strip()}'", file=sys.stderr)
+                            return response.text.strip()
+                        else:
+                            print("DEBUG: No text content in response", file=sys.stderr)
+                            return None
+                    except Exception as text_error:
+                        print(f"DEBUG: Error accessing response text: {text_error}", file=sys.stderr)
+                        return None
                 else:
-                    print(f"DEBUG: AI response blocked - finish_reason: {response.candidates[0].finish_reason if response.candidates else 'unknown'}", file=sys.stderr)
+                    print("DEBUG: No candidates in response", file=sys.stderr)
                     return None
     except Exception as e:
         # Log error for debugging

@@ -111,21 +111,38 @@ def try_ai_summary(diff_content, session_content):
                 model = genai.GenerativeModel('gemini-2.5-flash')
                 print("DEBUG: Model initialized", file=sys.stderr)
                 
-                prompt = f"""Analyze these git changes and session activity to write a detailed commit message.
+                # Clean diff content while preserving structure
+                cleaned_diff = ""
+                if diff_content:
+                    lines = diff_content.split('\n')
+                    for line in lines[:150]:  # More lines than before
+                        if line.startswith('diff --git'):
+                            file_path = line.split('b/')[-1] if 'b/' in line else line.split()[-1]
+                            cleaned_diff += f"File: {file_path}\n"
+                        elif line.startswith('@@'):
+                            cleaned_diff += f"Section: {line.replace('@@', '').strip()}\n"
+                        elif line.startswith('+') and not line.startswith('+++'):
+                            cleaned_diff += f"+ {line[1:].strip()}\n"
+                        elif line.startswith('-') and not line.startswith('---'):
+                            cleaned_diff += f"- {line[1:].strip()}\n"
+                        elif line.strip() and not line.startswith('index') and not line.startswith('new file') and not line.startswith('deleted file'):
+                            cleaned_diff += f"  {line.strip()}\n"
+                
+                prompt = f"""Analyze these code changes and development session to write a detailed commit message.
 
-Git diff:
-{diff_content[:3000]}
+Code Changes:
+{cleaned_diff[:2500]}
 
-Recent session activity:
-{session_content[-1000:] if session_content else 'No session data'}
+Development Session Context:
+{session_content[-800:] if session_content else 'No session data'}
 
 Write a comprehensive commit message that:
 - Uses a clear, descriptive title (50-72 characters)
 - Includes a detailed body explaining what was changed and why
 - Focuses on the technical purpose and business impact
-- Uses proper commit message format with title and body
+- Uses proper commit message format
 
-Provide only the commit message text (title + body if needed)."""
+Provide only the commit message text (title + body if appropriate)."""
                 
                 print("DEBUG: Generating content with Gemini...", file=sys.stderr)
                 response = model.generate_content(

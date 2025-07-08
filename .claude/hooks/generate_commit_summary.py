@@ -151,6 +151,24 @@ Provide only the commit message text."""
                         max_output_tokens=500,
                         temperature=0.3,
                     ),
+                    safety_settings=[
+                        genai.types.SafetySetting(
+                            category='HARM_CATEGORY_HATE_SPEECH',
+                            threshold='BLOCK_NONE',
+                        ),
+                        genai.types.SafetySetting(
+                            category='HARM_CATEGORY_DANGEROUS_CONTENT',
+                            threshold='BLOCK_NONE',
+                        ),
+                        genai.types.SafetySetting(
+                            category='HARM_CATEGORY_HARASSMENT',
+                            threshold='BLOCK_NONE',
+                        ),
+                        genai.types.SafetySetting(
+                            category='HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                            threshold='BLOCK_NONE',
+                        ),
+                    ],
                     request_options={"timeout": 60}  # 60 second timeout
                 )
                 

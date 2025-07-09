@@ -47,11 +47,14 @@ configure:
 
 1. Copy `.env.coderabbit.sample` to `.env`
 2. Fill in your configuration values
+   - **Important**: For `GITHUB_APP_PEM_FILE`, see [PEM Certificate Instructions](./CODERABBIT_PEM_INSTRUCTIONS.md)
 3. Run the Docker container:
+
    ```bash
    docker run --env-file .env --publish 127.0.0.1:8080:8080 \
      us-docker.pkg.dev/coderabbitprod/self-hosted/coderabbit-agent:latest
    ```
+
 4. Verify health: `curl 127.0.0.1:8080/health`
 
 ## Key Features Configured
@@ -146,4 +149,4 @@ For issues specific to the Mobius configuration:
 
 For CodeRabbit-specific issues:
 
-- Report at: https://github.com/coderabbitai/coderabbit-docs/issues
+- Report at: [https://github.com/coderabbitai/coderabbit-docs/issues](https://github.com/coderabbitai/coderabbit-docs/issues)

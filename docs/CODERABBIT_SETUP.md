@@ -17,7 +17,7 @@ CodeRabbit provides AI-powered code reviews with support for:
 
 - [Configuration Files](#configuration-files)
   - [1. `.coderabbit.yaml` - Main Configuration](#1-coderabbitayaml---main-configuration)
-  - [2. `.env.coderabbit.sample` - Self-Hosted Configuration](#2-envcodeabbitsample---self-hosted-configuration)
+  - [2. `.env.coderabbit.sample` - Self-Hosted Configuration](#2-envcoderabitsample---self-hosted-configuration)
 - [Usage](#usage)
   - [Cloud-Based (Recommended for Getting Started)](#cloud-based-recommended-for-getting-started)
   - [Self-Hosted Deployment](#self-hosted-deployment)

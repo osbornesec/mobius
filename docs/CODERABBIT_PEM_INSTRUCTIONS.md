@@ -25,7 +25,7 @@ This will output the certificate as a single line that you can copy into your
 
 Example flattened format:
 
-```
+```bash
 GITHUB_APP_PEM_FILE="-----BEGIN RSA PRIVATE KEY-----MIIEow...rest of key...-----END RSA PRIVATE KEY-----"
 ```
 
@@ -33,7 +33,7 @@ GITHUB_APP_PEM_FILE="-----BEGIN RSA PRIVATE KEY-----MIIEow...rest of key...-----
 
 Instead of flattening, you can mount the PEM file and reference its path:
 
-```
+```bash
 GITHUB_APP_PEM_FILE=/path/to/your-key.pem
 ```
 

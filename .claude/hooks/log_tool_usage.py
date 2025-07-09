@@ -4,10 +4,9 @@ import json
 import sys
 import os
 from datetime import datetime
-import fcntl
-import time
 import re
 from pathlib import Path
+import tempfile
 
 # Dynamically determine paths based on script location
 SCRIPT_DIR = Path(__file__).parent
@@ -84,6 +83,20 @@ SENSITIVE_FILES = [
     '.p12',
 ]
 
+# Pre-compute lowercase sensitive files list for better performance
+SENSITIVE_FILES_LOWER = [f.lower() for f in SENSITIVE_FILES]
+
+# Configure debug log path
+def get_debug_log_path():
+    """Get debug log path from environment or use default"""
+    debug_path = os.environ.get('MOBIUS_DEBUG_LOG')
+    if debug_path:
+        return debug_path
+    # Fallback to tempfile directory
+    return os.path.join(tempfile.gettempdir(), 'hook_debug.log')
+
+DEBUG_LOG_PATH = get_debug_log_path()
+
 def sanitize_text(text):
     """Remove sensitive information from text"""
     if not text:
@@ -151,7 +164,7 @@ def is_sensitive_file(file_path):
     file_name = os.path.basename(file_path).lower()
     
     # Check exact matches
-    if file_name in [f.lower() for f in SENSITIVE_FILES]:
+    if file_name in SENSITIVE_FILES_LOWER:
         return True
     
     # Check extensions
@@ -331,7 +344,7 @@ def extract_all_conversations(transcript_path, transcript_dir):
                             sessions_data[session_id]['processed_uuids'].add(uuid)
             except (OSError, IOError) as e:
                 # More specific exception handling as recommended by expert review
-                with open('/tmp/hook_debug.log', 'a') as f:
+                with open(DEBUG_LOG_PATH, 'a') as f:
                     f.write(f"[{datetime.now()}] Error reading processed UUIDs from {processed_uuids_file}: {e}\n")
     
     try:
@@ -391,16 +404,16 @@ def extract_all_conversations(transcript_path, transcript_dir):
                 
                 except json.JSONDecodeError as e:
                     # More specific exception handling as recommended by expert review
-                    with open('/tmp/hook_debug.log', 'a') as f:
+                    with open(DEBUG_LOG_PATH, 'a') as f:
                         f.write(f"[{datetime.now()}] JSON decode error in transcript: {e}\n")
                     continue
                 except Exception as e:
-                    with open('/tmp/hook_debug.log', 'a') as f:
+                    with open(DEBUG_LOG_PATH, 'a') as f:
                         f.write(f"[{datetime.now()}] Unexpected error processing transcript line: {e}\n")
                     continue
                     
     except (OSError, IOError) as e:
-        with open('/tmp/hook_debug.log', 'a') as f:
+        with open(DEBUG_LOG_PATH, 'a') as f:
             f.write(f"[{datetime.now()}] Error reading transcript file {transcript_path}: {e}\n")
     
     # Convert to regular dict and return
@@ -412,7 +425,7 @@ def main():
     """Main function to process and log tool usage"""
     
     # Always log that hook was called for debugging
-    with open('/tmp/hook_debug.log', 'a') as f:
+    with open(DEBUG_LOG_PATH, 'a') as f:
         f.write(f"[{datetime.now()}] Hook called\n")
         # Log environment information that might help identify configuration source
         f.write(f"[{datetime.now()}] Script location: {__file__}\n")
@@ -432,22 +445,22 @@ def main():
         stdin_data = sys.stdin.read()
         if not stdin_data.strip():
             # Log empty input for debugging
-            with open('/tmp/hook_debug.log', 'a') as f:
+            with open(DEBUG_LOG_PATH, 'a') as f:
                 f.write(f"[{datetime.now()}] Empty stdin input\n")
             sys.exit(0)
             
         input_json = json.loads(stdin_data)
     except json.JSONDecodeError as e:
         # Log JSON parsing errors for debugging
-        with open('/tmp/hook_debug.log', 'a') as f:
+        with open(DEBUG_LOG_PATH, 'a') as f:
             f.write(f"[{datetime.now()}] JSON decode error: {e}\n")
             f.write(f"Input data: {repr(stdin_data[:200])}\n")
         sys.exit(1)
     except Exception as e:
         # Log other errors for debugging
-        with open('/tmp/hook_debug.log', 'a') as f:
+        with open(DEBUG_LOG_PATH, 'a') as f:
             f.write(f"[{datetime.now()}] Unexpected error: {e}\n")
-        sys.exit(0)
+        sys.exit(1)
     
     # Extract fields
     tool_name = input_json.get('tool_name', 'Unknown')
@@ -457,7 +470,7 @@ def main():
     transcript_path = input_json.get('transcript_path', '')
     
     # Debug log the extracted values
-    with open('/tmp/hook_debug.log', 'a') as f:
+    with open(DEBUG_LOG_PATH, 'a') as f:
         f.write(f"[{datetime.now()}] tool_name='{tool_name}', session_id='{session_id}', transcript_path='{transcript_path}'\n")
         # Log if this session already has a .last-message file
         if session_id and transcript_path:
@@ -477,13 +490,13 @@ def main():
         last_message_file = f"{transcript_dir}/.last-message-{session_id}"
         
         # Debug log the last message file path
-        with open('/tmp/hook_debug.log', 'a') as f:
+        with open(DEBUG_LOG_PATH, 'a') as f:
             f.write(f"[{datetime.now()}] Will create/update: {last_message_file}\n")
     else:
         # Log missing required fields for debugging
-        with open('/tmp/hook_debug.log', 'a') as f:
+        with open(DEBUG_LOG_PATH, 'a') as f:
             f.write(f"[{datetime.now()}] Missing required fields: session_id='{session_id}', transcript_path='{transcript_path}'\n")
-        sys.exit(0)
+        sys.exit(1)
     
     # Extract conversations for ALL sessions (we already verified we have required info above)
     conversation_text = ""
@@ -491,7 +504,7 @@ def main():
     
     # If the provided transcript doesn't exist, find the session in other files
     if not os.path.exists(transcript_path):
-        with open('/tmp/hook_debug.log', 'a') as f:
+        with open(DEBUG_LOG_PATH, 'a') as f:
             f.write(f"[{datetime.now()}] WARNING: Transcript file doesn't exist: {transcript_path}\n")
             f.write(f"[{datetime.now()}] Searching for session {session_id} in all transcript files...\n")
         
@@ -506,16 +519,16 @@ def main():
                             found_in_files.append(jsonl_file)
                             break
             except Exception as e:
-                with open('/tmp/hook_debug.log', 'a') as f:
+                with open(DEBUG_LOG_PATH, 'a') as f:
                     f.write(f"[{datetime.now()}] Error checking {jsonl_file}: {e}\n")
         
         if found_in_files:
-            with open('/tmp/hook_debug.log', 'a') as f:
+            with open(DEBUG_LOG_PATH, 'a') as f:
                 f.write(f"[{datetime.now()}] Found session {session_id} in: {found_in_files}\n")
             # Use the first file found (could be improved to handle multiple files)
             transcript_path = found_in_files[0]
         else:
-            with open('/tmp/hook_debug.log', 'a') as f:
+            with open(DEBUG_LOG_PATH, 'a') as f:
                 f.write(f"[{datetime.now()}] Session {session_id} not found in any transcript files!\n")
             # Exit early if session not found anywhere
             return
@@ -532,7 +545,7 @@ def main():
                 # Extract conversations for ALL sessions found in transcript
                 sessions_conversations = extract_all_conversations(transcript_path, transcript_dir)
                 
-                with open('/tmp/hook_debug.log', 'a') as f:
+                with open(DEBUG_LOG_PATH, 'a') as f:
                     f.write(f"[{datetime.now()}] Found {len(sessions_conversations)} sessions in transcript\n")
                 
                 # Process each session's conversation and update its .last-message file
@@ -541,14 +554,14 @@ def main():
                     
                     # Create .last-message file if it doesn't exist
                     if not os.path.exists(session_last_message_file):
-                        with open('/tmp/hook_debug.log', 'a') as f:
+                        with open(DEBUG_LOG_PATH, 'a') as f:
                             f.write(f"[{datetime.now()}] Creating new .last-message file: {session_last_message_file}\n")
                         with open(session_last_message_file, 'w') as f:
                             f.write("")  # Create empty file
                     
                     # Update processed UUIDs for this session
                     if new_uuids:
-                        with open('/tmp/hook_debug.log', 'a') as f:
+                        with open(DEBUG_LOG_PATH, 'a') as f:
                             f.write(f"[{datetime.now()}] Adding {len(new_uuids)} new UUIDs for session {session_id_found}\n")
                         with open(session_last_message_file, 'a') as f:
                             for uuid in new_uuids:

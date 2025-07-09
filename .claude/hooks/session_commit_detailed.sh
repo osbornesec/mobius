@@ -19,7 +19,10 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
-SESSION_DIR="/home/michael/dev/Mobius/.claude/sessions"
+# Get the project root directory (assuming this script is in .claude/hooks/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SESSION_DIR="$PROJECT_ROOT/.claude/sessions"
 SESSION_FILE="$SESSION_DIR/.current-session"
 
 # Check if session file exists
@@ -64,14 +67,14 @@ sleep 2
 SESSION_CONTENT=$(cat "$SESSION_FILE")
 
 # Create a temporary file with staged changes
-TEMP_DIFF="/tmp/staged_changes_$$.diff"
+TEMP_DIFF="$(mktemp -t staged_changes_XXXXXX.diff)"
 git diff --cached > "$TEMP_DIFF"
 
 # Extract key changes from session file for context
 RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20)
 
 # Use the AI summary generator
-AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 /home/michael/dev/Mobius/.claude/hooks/generate_commit_summary.py "$TEMP_DIFF" 2>/dev/null)
+AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 "$SCRIPT_DIR/generate_commit_summary.py" "$TEMP_DIFF" 2>/dev/null)
 
 # Clean up temp file
 rm -f "$TEMP_DIFF"

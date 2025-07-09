@@ -122,6 +122,8 @@ class TestPrometheusMetrics:
         # We'll check if it exists, otherwise skip the test
         if response.status_code == 404:
             pytest.skip("Metrics endpoint not available in test environment")
+        
+        # Only perform assertions if the endpoint is accessible
         assert response.status_code == 200
         assert "text/plain" in response.headers["content-type"]
         # Check that some Prometheus metrics are present
@@ -131,8 +133,8 @@ class TestPrometheusMetrics:
 class TestCORSConfiguration:
     """Test cases for CORS configuration."""
     
-    def test_cors_headers_present(self):
-        """Test that CORS headers are present in responses."""
+    def test_cors_preflight_request(self):
+        """Test that CORS preflight requests are handled correctly."""
         client = TestClient(app)
         response = client.options("/", headers={
             "Origin": "http://localhost:3000",
@@ -140,10 +142,14 @@ class TestCORSConfiguration:
             "Access-Control-Request-Headers": "Content-Type",
         })
         
+        # Verify preflight response
+        assert response.status_code == 200
         assert "access-control-allow-origin" in response.headers
+        assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
         assert "access-control-allow-methods" in response.headers
-        # The headers check might not always be present in OPTIONS response
-        # Let's check a regular GET request with Origin header
+        assert "GET" in response.headers["access-control-allow-methods"]
+        assert "access-control-allow-headers" in response.headers
+        assert response.headers["access-control-allow-credentials"] == "true"
         
     def test_cors_headers_on_get_request(self):
         """Test that CORS headers are present on regular GET requests."""
@@ -152,9 +158,23 @@ class TestCORSConfiguration:
             "Origin": "http://localhost:3000",
         })
         
+        # Verify CORS headers on actual request
+        assert response.status_code == 200
         assert "access-control-allow-origin" in response.headers
         assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
         assert response.headers["access-control-allow-credentials"] == "true"
+    
+    def test_cors_headers_with_unauthorized_origin(self):
+        """Test that CORS headers are not present for unauthorized origins."""
+        client = TestClient(app)
+        response = client.get("/", headers={
+            "Origin": "http://unauthorized-origin.com",
+        })
+        
+        # For unauthorized origins, the access-control-allow-origin header should not match
+        assert response.status_code == 200
+        if "access-control-allow-origin" in response.headers:
+            assert response.headers["access-control-allow-origin"] != "http://unauthorized-origin.com"
 
 
 class TestErrorHandling:

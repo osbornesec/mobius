@@ -228,7 +228,9 @@ def generate_summary(diff_analysis, session_analysis):
 
 def main():
     # Read diff from file
-    diff_file = sys.argv[1] if len(sys.argv) > 1 else '/tmp/staged_changes.diff'
+    import tempfile
+    default_diff_file = os.path.join(tempfile.gettempdir(), 'staged_changes.diff')
+    diff_file = sys.argv[1] if len(sys.argv) > 1 else default_diff_file
     try:
         with open(diff_file, 'r') as f:
             diff_content = f.read()

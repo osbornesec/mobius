@@ -46,6 +46,8 @@ services:
     image: redis:7-alpine
     restart: always
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?Missing REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
 
   # Qdrant - Production settings
   qdrant:
@@ -56,6 +58,10 @@ services:
       QDRANT__SERVICE__GRPC_PORT: 6334
       QDRANT__LOG_LEVEL: WARN
       QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?Missing QDRANT_API_KEY}
+    volumes:
+      - qdrant_data:/qdrant/storage
 
 volumes:
   postgres_data:
+  redis_data:
+  qdrant_data:

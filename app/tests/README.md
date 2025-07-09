@@ -14,19 +14,20 @@ operations.
    ```
 
 2. **Dependencies**: Install required packages:
+
    ```bash
    pip install -r requirements.txt -r requirements-dev.txt
    ```
 
 ### Running Tests
 
-#### Run all Pinecone tests:
+#### Run all Pinecone tests
 
 ```bash
 pytest app/tests/test_pinecone_operations.py -v
 ```
 
-#### Run specific test classes:
+#### Run specific test classes
 
 ```bash
 # Test basic operations
@@ -39,13 +40,13 @@ pytest app/tests/test_pinecone_operations.py::TestPineconeWithoutAPIKey -v
 pytest app/tests/test_pinecone_operations.py::TestPineconeAsyncOperations -v
 ```
 
-#### Run specific test methods:
+#### Run specific test methods
 
 ```bash
 pytest app/tests/test_pinecone_operations.py::TestPineconeOperations::test_upsert_operations -v
 ```
 
-#### Run with coverage:
+#### Run with coverage
 
 ```bash
 pytest app/tests/test_pinecone_operations.py --cov=app.storage.vector --cov-report=html

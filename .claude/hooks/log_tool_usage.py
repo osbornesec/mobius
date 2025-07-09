@@ -112,6 +112,10 @@ def sanitize_text(text):
                 
                 if isinstance(sensitive_value, tuple):
                     sensitive_value = sensitive_value[0]
+                
+                # Handle None case (when capturing group exists but is empty)
+                if sensitive_value is None:
+                    sensitive_value = match.group(0)
                     
                 if sensitive_value and len(sensitive_value) > 4:
                     # Show first 2 and last 2 characters for partial identification
@@ -120,7 +124,7 @@ def sanitize_text(text):
                     replacement = f"[REDACTED-{label.upper()}]"
                 
                 # Replace only the sensitive part, preserving the rest of the match
-                if match.lastindex:
+                if match.lastindex and sensitive_value:
                     return match.group(0).replace(sensitive_value, replacement)
                 else:
                     return replacement

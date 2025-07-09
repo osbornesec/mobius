@@ -206,7 +206,6 @@ notifications:
 code_generation:
   # Docstring generation configuration
   docstrings:
-    enabled: true
     path_instructions:
       # Python docstrings
       - path: "**/*.py"
@@ -241,7 +240,6 @@ code_generation:
           - OpenAPI documentation compatibility
   # Unit test generation (Early Access feature)
   unit_tests:
-    enabled: true
     path_instructions:
       # Python tests
       - path: "**/*.py"

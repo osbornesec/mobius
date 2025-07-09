@@ -13,6 +13,28 @@ CodeRabbit provides AI-powered code reviews with support for:
 - Security scanning
 - Multi-language support
 
+## Table of Contents
+
+- [Configuration Files](#configuration-files)
+  - [1. `.coderabbit.yaml` - Main Configuration](#1-coderabbitayaml---main-configuration)
+  - [2. `.env.coderabbit.sample` - Self-Hosted Configuration](#2-envcodeabbitsample---self-hosted-configuration)
+- [Usage](#usage)
+  - [Cloud-Based (Recommended for Getting Started)](#cloud-based-recommended-for-getting-started)
+  - [Self-Hosted Deployment](#self-hosted-deployment)
+- [Key Features Configured](#key-features-configured)
+  - [1. Automatic Docstring Generation](#1-automatic-docstring-generation)
+  - [2. Automatic Test Generation (Early Access)](#2-automatic-test-generation-early-access)
+  - [3. Strict Code Review](#3-strict-code-review)
+  - [4. Security Features](#4-security-features)
+- [Commands](#commands)
+  - [Review Commands](#review-commands)
+  - [Chat Commands](#chat-commands)
+- [Best Practices](#best-practices)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+- [Additional Resources](#additional-resources)
+- [Support](#support)
+
 ## Configuration Files
 
 ### 1. `.coderabbit.yaml` - Main Configuration

@@ -26,7 +26,7 @@ This will output the certificate as a single line that you can copy into your
 Example flattened format:
 
 ```
-GITHUB_APP_PEM_FILE=-----BEGIN RSA PRIVATE KEY-----MIIEow...rest of key...-----END RSA PRIVATE KEY-----
+GITHUB_APP_PEM_FILE="-----BEGIN RSA PRIVATE KEY-----MIIEow...rest of key...-----END RSA PRIVATE KEY-----"
 ```
 
 #### Option 2: Mount the File (Recommended for Kubernetes/Production)
@@ -53,7 +53,7 @@ separate from environment variables.
 
 ## Security Best Practices
 
-- Never commit PEM files to version control
-- Use secrets management (Kubernetes Secrets, HashiCorp Vault) in production
-- Rotate keys regularly
-- Use the file mounting approach for production deployments
+- Never commit PEM files to version control.
+- Use secrets management (Kubernetes Secrets, HashiCorp Vault) in production.
+- Rotate keys regularly.
+- Use the file mounting approach for production deployments.

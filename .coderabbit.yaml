@@ -1,0 +1,280 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit Configuration - Strict Settings for Mobius Platform
+
+language: 'en-US'
+early_access: false
+
+reviews:
+  # Use assertive profile for stricter, more detailed reviews
+  profile: 'assertive'
+
+  # Enable request changes workflow - blocks PR until issues are resolved
+  request_changes_workflow: true
+
+  # Review display settings
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  # Auto-review configuration
+  auto_review:
+    enabled: true
+    drafts: false
+
+  # Tools configuration - Enable all available tools for comprehensive analysis
+  tools:
+    # Python linting and formatting
+    ruff:
+      enabled: true
+      config_file: 'pyproject.toml' # If you have custom ruff config
+
+    # Shell script linting
+    shellcheck:
+      enabled: true
+
+    # Markdown linting
+    markdownlint:
+      enabled: true
+
+    # Grammar and style checking
+    languagetool:
+      enabled: true
+
+    # AST-based custom rules (Pro feature)
+    ast-grep:
+      essential_rules: true # Enable essential security rules
+      rule_dirs:
+        - '.coderabbit/rules' # Custom rule directory
+      util_dirs:
+        - '.coderabbit/utils'
+
+    # ESLint for JavaScript/TypeScript
+    eslint:
+      enabled: true
+      config_file: '.eslintrc.json'
+
+    # Prettier for code formatting
+    prettier:
+      enabled: true
+
+    # Security scanning
+    semgrep:
+      enabled: true
+
+    # TypeScript compiler checks
+    tsc:
+      enabled: true
+
+  # Path-specific instructions for Mobius platform
+  path_instructions:
+    # Python/FastAPI backend
+    - path: '**/*.py'
+      instructions: |
+        Ensure Python code follows:
+        - PEP 8 style guide strictly
+        - Type hints for all function parameters and returns
+        - Comprehensive docstrings (Google style)
+        - FastAPI best practices for API endpoints
+        - Pydantic model validation
+        - Proper error handling and logging
+        - Security best practices (no hardcoded secrets, proper input validation)
+        - Async/await patterns where appropriate
+        - Unit test coverage for new functions
+
+    # TypeScript/React frontend
+    - path: '**/*.{ts,tsx}'
+      instructions: |
+        Ensure TypeScript/React code follows:
+        - Strict TypeScript configuration (no any types)
+        - React hooks best practices
+        - Component composition patterns
+        - Proper state management (Redux/Zustand)
+        - Accessibility standards (WCAG 2.1 AA)
+        - Performance optimizations (memo, useMemo, useCallback)
+        - Error boundaries implementation
+        - Comprehensive JSDoc comments
+        - Unit and integration test coverage
+
+    # API endpoints
+    - path: '**/api/**/*.py'
+      instructions: |
+        For API endpoints, ensure:
+        - Proper authentication/authorization decorators
+        - Input validation with Pydantic models
+        - Rate limiting implementation
+        - OpenAPI documentation
+        - Consistent error response format
+        - RESTful conventions
+        - Comprehensive integration tests
+
+    # Database models
+    - path: '**/models/**/*.py'
+      instructions: |
+        For database models:
+        - Proper indexing for performance
+        - Migration scripts included
+        - Data validation constraints
+        - Relationship definitions
+        - Audit fields (created_at, updated_at)
+
+    # Tests
+    - path: '**/tests/**/*'
+      instructions: |
+        For test files:
+        - Descriptive test names
+        - Arrange-Act-Assert pattern
+        - Proper mocking and fixtures
+        - Edge case coverage
+        - Performance test considerations
+        - No hardcoded test data
+
+    # Docker and Kubernetes
+    - path: '**/{Dockerfile,*.dockerfile,docker-compose*.yml}'
+      instructions: |
+        For Docker files:
+        - Multi-stage builds for optimization
+        - Security best practices (non-root user, minimal base images)
+        - Health checks implementation
+        - Proper layer caching
+        - Environment variable documentation
+
+    - path: '**/*.{yaml,yml}'
+      instructions: |
+        For Kubernetes manifests:
+        - Resource limits and requests
+        - Security contexts
+        - Liveness and readiness probes
+        - Network policies
+        - RBAC configurations
+        - ConfigMaps and Secrets usage
+
+    # Documentation
+    - path: '**/*.md'
+      instructions: |
+        For documentation:
+        - Clear structure with proper headings
+        - Code examples with syntax highlighting
+        - API endpoint documentation
+        - Installation/setup instructions
+        - Troubleshooting section
+        - Architecture diagrams where relevant
+
+# Chat configuration
+chat:
+  auto_reply: true
+
+# Additional strict settings
+file_review:
+  # Review all file types
+  ignore_patterns: []
+
+  # Maximum file size to review (in KB)
+  max_file_size: 500
+
+# Branch protection
+branch_protection:
+  # Branches to always review
+  protected_branches:
+    - 'main'
+    - 'master'
+    - 'develop'
+    - 'staging'
+    - 'production'
+
+  # Require reviews for these file changes
+  sensitive_paths:
+    - '**/auth/**'
+    - '**/security/**'
+    - '**/*.env*'
+    - '**/secrets/**'
+    - '**/config/**'
+
+# Performance settings
+performance:
+  # Timeout for review generation (seconds)
+  review_timeout: 300
+
+  # Maximum files to review per PR
+  max_files: 100
+
+  # Enable parallel processing
+  parallel_processing: true
+
+# Notifications
+notifications:
+  # Notify on security issues
+  security_alerts: true
+
+  # Notify on performance issues
+  performance_alerts: true
+
+  # Notify on breaking changes
+  breaking_changes: true
+
+# Code Generation Settings
+code_generation:
+  # Docstring generation configuration
+  docstrings:
+    enabled: true
+    path_instructions:
+      # Python docstrings
+      - path: "**/*.py"
+        instructions: |
+          Generate comprehensive Google-style docstrings that include:
+          - Brief description of the function/class purpose
+          - Args section with parameter types and descriptions
+          - Returns section with return type and description
+          - Raises section for exceptions
+          - Example usage section for complex functions
+          - Note: End all docstrings with "Generated by CodeRabbit"
+      
+      # TypeScript/JavaScript JSDoc
+      - path: "**/*.{ts,tsx,js,jsx}"
+        instructions: |
+          Generate comprehensive JSDoc comments that include:
+          - @description - Clear purpose of the function/component
+          - @param - All parameters with types and descriptions
+          - @returns - Return type and description
+          - @throws - Possible exceptions
+          - @example - Usage examples for complex functions
+          - @since - Version information
+          - Note: End all docstrings with "Generated by CodeRabbit"
+      
+      # FastAPI endpoints
+      - path: "**/api/**/*.py"
+        instructions: |
+          For API endpoints, generate docstrings that include:
+          - Endpoint purpose and business logic
+          - Request/response models with examples
+          - Authentication requirements
+          - Rate limiting information
+          - Error responses with status codes
+          - OpenAPI documentation compatibility
+  
+  # Unit test generation (Early Access feature)
+  unit_tests:
+    enabled: true
+    path_instructions:
+      # Python tests
+      - path: "**/*.py"
+        instructions: |
+          Generate pytest-based unit tests that:
+          - Follow AAA pattern (Arrange, Act, Assert)
+          - Include edge cases and error scenarios
+          - Use appropriate fixtures and mocks
+          - Test both success and failure paths
+          - Include parametrized tests for multiple scenarios
+          - Add descriptive test names following test_should_when pattern
+      
+      # TypeScript/React tests
+      - path: "**/*.{ts,tsx}"
+        instructions: |
+          Generate Jest/React Testing Library tests that:
+          - Test component rendering and behavior
+          - Include accessibility tests
+          - Mock external dependencies
+          - Test user interactions
+          - Cover error boundaries
+          - Test hooks separately
+          - Use data-testid attributes appropriately

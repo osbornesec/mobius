@@ -161,9 +161,6 @@ def main():
         
         if tool_name == 'Bash':
             command = tool_input.get('command', '')
-            
-            if tool_name == 'Bash':
-            command = tool_input.get('command', '')
         
         # Ensure log directory exists
         log_dir = Path.cwd() / 'logs'

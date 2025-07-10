@@ -1,0 +1,151 @@
+name: Deploy to Production
+# This is an example workflow file. Copy to deploy-production.yml and configure for your deployment needs.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  validate:
+    name: Validate Production Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate production docker-compose with secrets
+        env:
+          POSTGRES_USER: ${{ secrets.PROD_POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.PROD_REDIS_PASSWORD }}
+          QDRANT_API_KEY: ${{ secrets.PROD_QDRANT_API_KEY }}
+          POSTGRES_DB: ${{ secrets.PROD_POSTGRES_DB }}
+        run: |
+          # Ensure all required secrets are set
+          if [ -z "$POSTGRES_USER" ] || [ -z "$POSTGRES_PASSWORD" ] || [ -z "$REDIS_PASSWORD" ] || [ -z "$QDRANT_API_KEY" ]; then
+            echo "ERROR: Missing required secrets. Please configure GitHub repository secrets."
+            echo "Required secrets: PROD_POSTGRES_USER, PROD_POSTGRES_PASSWORD, PROD_REDIS_PASSWORD, PROD_QDRANT_API_KEY"
+            exit 1
+          fi
+          
+          # Validate the production compose file
+          docker compose -f docker-compose.prod.yml config > /dev/null
+          echo "✓ Production configuration validated"
+
+  build:
+    name: Build Production Images
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.CONTAINER_REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/backend/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ secrets.CONTAINER_REGISTRY }}/mobius-backend:${{ github.sha }}
+            ${{ secrets.CONTAINER_REGISTRY }}/mobius-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.CONTAINER_REGISTRY }}/mobius-frontend:${{ github.sha }}
+            ${{ secrets.CONTAINER_REGISTRY }}/mobius-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        env:
+          # Production database credentials
+          POSTGRES_USER: ${{ secrets.PROD_POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.PROD_POSTGRES_DB }}
+          
+          # Redis configuration
+          REDIS_PASSWORD: ${{ secrets.PROD_REDIS_PASSWORD }}
+          
+          # Qdrant configuration
+          QDRANT_API_KEY: ${{ secrets.PROD_QDRANT_API_KEY }}
+          
+          # Application secrets
+          JWT_SECRET_KEY: ${{ secrets.PROD_JWT_SECRET_KEY }}
+          SESSION_SECRET_KEY: ${{ secrets.PROD_SESSION_SECRET_KEY }}
+          INTERNAL_API_KEY: ${{ secrets.PROD_INTERNAL_API_KEY }}
+          
+          # External service keys
+          OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.PROD_ANTHROPIC_API_KEY }}
+          GITHUB_APP_ID: ${{ secrets.PROD_GITHUB_APP_ID }}
+          GITHUB_PRIVATE_KEY: ${{ secrets.PROD_GITHUB_PRIVATE_KEY }}
+          
+          # Monitoring
+          SENTRY_DSN: ${{ secrets.PROD_SENTRY_DSN }}
+        run: |
+          echo "Deploying to production environment..."
+          # Add your deployment commands here
+          # For example: kubectl apply, docker stack deploy, etc.
+
+# Required GitHub Secrets:
+# - Container Registry
+#   - CONTAINER_REGISTRY
+#   - REGISTRY_USERNAME
+#   - REGISTRY_PASSWORD
+#
+# - Database
+#   - PROD_POSTGRES_USER
+#   - PROD_POSTGRES_PASSWORD
+#   - PROD_POSTGRES_DB
+#
+# - Services
+#   - PROD_REDIS_PASSWORD
+#   - PROD_QDRANT_API_KEY
+#
+# - Security
+#   - PROD_JWT_SECRET_KEY
+#   - PROD_SESSION_SECRET_KEY
+#   - PROD_INTERNAL_API_KEY
+#
+# - External APIs
+#   - PROD_OPENAI_API_KEY
+#   - PROD_ANTHROPIC_API_KEY
+#   - PROD_GITHUB_APP_ID
+#   - PROD_GITHUB_PRIVATE_KEY
+#   - PROD_SENTRY_DSN

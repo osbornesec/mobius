@@ -1,0 +1,40 @@
+# Hadolint configuration for Mobius project
+# https://github.com/hadolint/hadolint
+
+ignored:
+  # Allow apt-get without version pinning during development
+  - DL3008
+  - DL3009 # Delete the apt-get lists after installing
+
+trustedRegistries:
+  - docker.io
+  - gcr.io
+  - quay.io
+  - ghcr.io
+
+# Override severity levels for Mobius security requirements
+overrides:
+  - id: DL3001
+    severity: error # Avoid using sudo in RUN
+  - id: DL3002
+    severity: error # Last user should not be root
+  - id: DL3003
+    severity: error # Use WORKDIR instead of cd
+  - id: DL3004
+    severity: error # Do not use sudo
+  - id: DL3025
+    severity: error # Use --no-cache-dir with pip
+  - id: DL3020
+    severity: error # Use COPY instead of ADD for files and folders
+  - id: DL3013
+    severity: warning # Pin versions in pip
+  - id: DL3018
+    severity: warning # Pin versions in apk add
+  - id: DL3047
+    severity: warning # Use COPY instead of ADD for archives
+  - id: DL3059
+    severity: warning # Multiple consecutive RUN instructions
+  - id: DL3027
+    severity: info # Do not use apt
+  - id: DL3045
+    severity: info # COPY with more than two arguments

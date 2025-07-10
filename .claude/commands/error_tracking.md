@@ -30,7 +30,10 @@ claude run error_tracking.md --service api --service frontend
 
 ```python
 import json
+import os
 import re
+import time
+import requests
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -40,8 +43,10 @@ import subprocess
 class ErrorAnalyzer:
     """Analyze error patterns and frequencies"""
     
-    def __init__(self, log_dir: str = "/var/log/mobius"):
-        self.log_dir = Path(log_dir)
+    def __init__(self, log_dir: str | None = None):
+        # prefer explicit arg, then env var, then default
+        resolved = log_dir or os.environ.get("MOBIUS_LOG_PATH", "/var/log/mobius")
+        self.log_dir = Path(resolved).expanduser().resolve()
         self.error_patterns = {
             'database': r'(DatabaseError|psycopg2|SQLAlchemy)',
             'api': r'(FastAPI|HTTPException|RequestValidationError)',

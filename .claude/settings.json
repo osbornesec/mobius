@@ -6,15 +6,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/validate_bash_command.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/validate_bash_command.py"
           },
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/git_branch_protection_hook.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/git_branch_protection_hook.py"
           },
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/pre_tool_use.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/pre_tool_use.py"
           }
         ]
       },
@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/check_large_files_hook.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/check_large_files_hook.py"
           }
         ]
       },
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/git_branch_protection_hook.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/git_branch_protection_hook.py"
           }
         ]
       }
@@ -43,23 +43,23 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/bash /home/michael/dev/Mobius/.claude/hooks/auto_format_code.sh"
+            "command": "/bin/bash ~/devel/mobius/.claude/hooks/auto_format_code.sh"
           },
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/run_tests_on_change.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/run_tests_on_change.py"
           },
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/check_dependencies_hook.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/check_dependencies_hook.py"
           },
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/trigger_doc_update_hook.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/trigger_doc_update_hook.py"
           },
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/check_line_count_hook.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/check_line_count_hook.py"
           }
         ]
       },
@@ -68,7 +68,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/context7_reminder_post.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/context7_reminder_post.py"
           }
         ]
       },
@@ -77,7 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/michael/dev/Mobius/.claude/hooks/log_tool_usage.sh"
+            "command": "python3 ~/devel/mobius/.claude/hooks/log_tool_usage.py"
           }
         ]
       },
@@ -86,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /home/michael/dev/Mobius/.claude/hooks/pre_tool_use.py"
+            "command": "python3 ~/devel/mobius/.claude/hooks/pre_tool_use.py"
           }
         ]
       }

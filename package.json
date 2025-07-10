@@ -1,0 +1,23 @@
+{
+  "name": "@mobius/root",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mobius Context Engineering Platform - Root Package",
+  "author": "Mobius Team",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md,yml,yaml}\" --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md,yml,yaml}\" --ignore-path .prettierignore",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:test": "cd frontend && npm run test"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}

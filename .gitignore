@@ -646,6 +646,9 @@ elasticsearch-data/
 solr-data/
 
 # Claude-specific
-.claude/sessions/archive/
+# Ignore every Claude artefact, then explicitly un-ignore the parts that must be versioned
+.claude/
+!/.claude/hooks/
+!/.claude/settings.json
 
 # End of .gitignore

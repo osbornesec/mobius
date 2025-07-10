@@ -1,5 +1,4 @@
 # Mobius Context Engine - Development Environment
-version: '3.8'
 
 services:
   # PostgreSQL with pgvector extension
@@ -7,68 +6,83 @@ services:
     image: pgvector/pgvector:pg15
     container_name: mobius-postgres
     environment:
-      POSTGRES_DB: mobius
-      POSTGRES_USER: mobius
-      POSTGRES_PASSWORD: mobius
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: ${POSTGRES_DB:-mobius}
+      POSTGRES_USER: ${POSTGRES_USER:-mobius}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mobius_dev_password}
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mobius -d mobius"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-mobius} -d ${POSTGRES_DB:-mobius}']
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
+    networks:
+      - mobius-network
 
   # Redis for caching
   redis:
     image: redis:7-alpine
     container_name: mobius-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s
+    networks:
+      - mobius-network
 
   # Qdrant vector database
   qdrant:
     image: qdrant/qdrant:latest
     container_name: mobius-qdrant
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - '6333:6333'
+      - '6334:6334'
     volumes:
       - qdrant_data:/qdrant/storage
     environment:
       QDRANT__SERVICE__HTTP_PORT: 6333
       QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: INFO
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6333/readyz']
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+    networks:
+      - mobius-network
 
   # FastAPI Backend
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      target: development  # Use development stage with dev dependencies
     container_name: mobius-backend
+    command: ['uvicorn', 'app.main:app', '--host', '0.0.0.0', '--port', '8000', '--reload']
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
-      DATABASE_URL: postgresql://mobius:mobius@postgres:5432/mobius
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mobius}:${POSTGRES_PASSWORD:-mobius_dev_password}@postgres:5432/${POSTGRES_DB:-mobius}
       REDIS_URL: redis://redis:6379
       QDRANT_URL: http://qdrant:6333
       ENVIRONMENT: development
+      # Additional environment variables for better dev experience
+      PYTHONUNBUFFERED: 1
+      LOG_LEVEL: DEBUG
     volumes:
-      - ./backend:/app
+      - ./app:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,25 +91,59 @@ services:
       qdrant:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mobius-network
 
   # React Frontend (development)
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: docker/frontend/Dockerfile.dev
     container_name: mobius-frontend
+    command: ['npm', 'run', 'dev', '--', '--host', '0.0.0.0']
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       REACT_APP_API_URL: http://localhost:8000
+      VITE_API_URL: http://localhost:8000
+      # Additional environment variables for Vite development
+      CHOKIDAR_USEPOLLING: 'true' # For hot reload in Docker
+      WATCHPACK_POLLING: 'true'
+      NODE_ENV: development
     volumes:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
       - backend
     restart: unless-stopped
+    stdin_open: true # Keep stdin open for interactive mode
+    tty: true # Allocate a pseudo-TTY
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:3000/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    networks:
+      - mobius-network
+
+networks:
+  mobius-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
   qdrant_data:
+    driver: local

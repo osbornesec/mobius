@@ -32,6 +32,8 @@ claude run error_tracking.md --service api --service frontend
 import json
 import os
 import re
+import time
+import requests
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -45,7 +47,6 @@ class ErrorAnalyzer:
         # prefer explicit arg, then env var, then default
         resolved = log_dir or os.environ.get("MOBIUS_LOG_PATH", "/var/log/mobius")
         self.log_dir = Path(resolved)
-        self.log_dir = Path(log_dir)
         self.error_patterns = {
             'database': r'(DatabaseError|psycopg2|SQLAlchemy)',
             'api': r'(FastAPI|HTTPException|RequestValidationError)',

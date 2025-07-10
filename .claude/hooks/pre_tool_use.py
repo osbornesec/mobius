@@ -7,6 +7,7 @@
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -64,7 +65,7 @@ def format_with_prettier(tool_name, tool_input):
                 print(f"📝 Will format {file_path} with Prettier after write completes", file=sys.stderr)
                 
                 subprocess.Popen(
-                    ['/bin/bash', '-c', f'sleep 1 && npx prettier --write "{file_path}" 2>/dev/null || true'],
+                    ['/bin/bash', '-c', f'sleep 1 && npx prettier --write {shlex.quote(str(file_path))} 2>/dev/null || true'],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL
                 )

@@ -346,6 +346,9 @@ kubectl exec -n mobius deployment/mobius-backend -- python -c "import sys; print
 
 ### Performance Profiling
 ```bash
+# Define environment variables with defaults
+MOBIUS_TMP_DIR=${MOBIUS_TMP_DIR:-/tmp}
+
 # CPU profiling
 # Example: kubectl exec -n mobius deployment/mobius-backend -- python -m cProfile -o "$MOBIUS_TMP_DIR"/profile.prof app.py
 # kubectl cp mobius/mobius-backend-xxx:"$MOBIUS_TMP_DIR"/profile.prof ./profile.prof

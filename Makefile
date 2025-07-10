@@ -40,6 +40,7 @@ DB_PORT := 5432
 
 # Container names
 POSTGRES_CONTAINER := mobius-postgres
+REDIS_CONTAINER := mobius-redis
 
 # Service names
 SERVICES := postgres redis qdrant backend frontend
@@ -355,16 +356,16 @@ lint-compose: ## Validate Docker Compose files syntax
 	@echo -e "$(BLUE)Validating Docker Compose files...$(NC)"
 	@echo -e "$(BLUE)Checking docker-compose.yml...$(NC)"
 	@if [ -f .env ]; then \
-		docker-compose --env-file .env -f docker-compose.yml config > /dev/null && \
+		$(DOCKER_COMPOSE) --env-file .env -f $(DOCKER_COMPOSE_FILE) config > /dev/null && \
 		echo -e "$(GREEN)✓ docker-compose.yml is valid$(NC)"; \
 	else \
 		echo -e "$(YELLOW)Warning: .env file not found, using environment variables$(NC)"; \
-		docker-compose -f docker-compose.yml config > /dev/null && \
+		$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) config > /dev/null && \
 		echo -e "$(GREEN)✓ docker-compose.yml is valid$(NC)"; \
 	fi
 	@echo -e "$(BLUE)Checking docker-compose.prod.yml...$(NC)"
 	@if [ -f .env ] && grep -q "REDIS_PASSWORD" .env && grep -q "QDRANT_API_KEY" .env; then \
-		docker-compose --env-file .env -f docker-compose.prod.yml config > /dev/null && \
+		$(DOCKER_COMPOSE) --env-file .env -f docker-compose.prod.yml config > /dev/null && \
 		echo -e "$(GREEN)✓ docker-compose.prod.yml is valid$(NC)"; \
 	else \
 		echo -e "$(YELLOW)Warning: Production variables (REDIS_PASSWORD, QDRANT_API_KEY) not found in .env$(NC)"; \
@@ -496,4 +497,4 @@ health: ## Check health of all services
 	@curl -s http://localhost:3000 > /dev/null && echo -e "$(GREEN)✓ Frontend responding$(NC)" || echo -e "$(RED)✗ Frontend not responding$(NC)"
 	@curl -s http://localhost:6333/health || echo -e "$(RED)✗ Qdrant not responding$(NC)"
 	@docker exec $(POSTGRES_CONTAINER) pg_isready > /dev/null && echo -e "$(GREEN)✓ PostgreSQL ready$(NC)" || echo -e "$(RED)✗ PostgreSQL not ready$(NC)"
-	@docker exec mobius-redis redis-cli ping > /dev/null && echo -e "$(GREEN)✓ Redis ready$(NC)" || echo -e "$(RED)✗ Redis not ready$(NC)"
+	@docker exec $(REDIS_CONTAINER) redis-cli ping > /dev/null && echo -e "$(GREEN)✓ Redis ready$(NC)" || echo -e "$(RED)✗ Redis not ready$(NC)"

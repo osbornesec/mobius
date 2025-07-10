@@ -305,7 +305,11 @@ onboard: ## Set up new developer environment
 	$(MAKE) backend-venv
 	@echo ""
 	@echo -e "$(BLUE)Installing all dependencies...$(NC)"
+
 	$(MAKE) install
+	@echo ""
+	@echo -e "$(BLUE)Installing pre-commit hooks...$(NC)"
+	$(PYTHON_BIN) -m pre_commit install --install-hooks
 	@echo ""
 	@echo -e "$(GREEN)✓ Developer setup complete!$(NC)"
 	@echo ""
@@ -315,6 +319,7 @@ onboard: ## Set up new developer environment
 	@echo -e "  3. Run 'make help' to see all available commands"
 	@echo ""
 	@echo -e "$(BLUE)Happy coding! 🚀$(NC)"
+
 
 .PHONY: dev
 dev: ## Start full development environment

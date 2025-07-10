@@ -272,7 +272,9 @@ pip install -r requirements.txt
 npm install
 
 # Set up pre-commit hooks
-pre-commit install
+# This will install the git hooks that run on every commit.
+# See .pre-commit-config.yaml for the full list of hooks.
+pre-commit install --install-hooks
 
 # Run database migrations
 alembic upgrade head

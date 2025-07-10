@@ -1,2 +1,18 @@
-
+# Pre-commit hooks
 pre-commit
+gitleaks
+ruff
+pyright
+validate-pyproject
+biome
+prettier
+mdformat
+mdformat-gfm
+mdformat-ruff
+mdformat-frontmatter
+markdownlint
+sqlfluff
+shellcheck-py
+bashate
+checkmake
+oxipng

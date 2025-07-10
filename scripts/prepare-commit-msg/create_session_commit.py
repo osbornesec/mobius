@@ -7,6 +7,7 @@ import json
 import subprocess
 from collections import defaultdict
 from pathlib import Path
+from sanitize import sanitize_text
 
 def analyze_diff(diff_content):
     """Analyze git diff to understand changes"""
@@ -104,8 +105,8 @@ def try_ai_summary(diff_content, session_content):
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 # Use raw diff content with size limit
-                prompt_diff = diff_content[:3000] if diff_content else "No diff content" 
-                prompt = f"""Analyze these code changes and development session to write a detailed commit message.\n\nCode Changes:\n{prompt_diff}\n\nDevelopment Session Context:\n{session_content[-800:] if session_content else 'No session data'}\n\nWrite a comprehensive commit message that:\n- Uses a clear, descriptive title (50-72 characters)\n- Includes a detailed body explaining what was changed and why\n- Focuses on the technical purpose and business impact\n- Uses proper commit message format\n\nProvide only the commit message text (title + body if appropriate).""" 
+                prompt_diff = diff_content[:3000] if diff_content else "No diff content"
+                prompt = f"""Analyze these code changes and development session to write a detailed commit message.\n\nCode Changes:\n{prompt_diff}\n\nDevelopment Session Context:\n{session_content[-800:] if session_content else 'No session data'}\n\nWrite a comprehensive commit message that:\n- Uses a clear, descriptive title (50-72 characters)\n- Includes a detailed body explaining what was changed and why\n- Focuses on the technical purpose and business impact\n- Uses proper commit message format\n\nProvide only the commit message text (title + body if appropriate)."""
                 response = model.generate_content(
                     prompt,
                     generation_config=genai.types.GenerationConfig(
@@ -231,10 +232,14 @@ def main():
         diff_analysis = analyze_diff(diff_content)
         session_analysis = analyze_session(session_content)
         summary = generate_summary(diff_analysis, session_analysis)
+    
+    # Sanitize the session content before writing to the commit message
+    sanitized_session_content = sanitize_text(session_content)
+
     with open(commit_msg_filepath, "w") as f:
         f.write(summary)
         f.write("\n\n")
-        f.write(session_content)
+        f.write(sanitized_session_content)
 
 if __name__ == "__main__":
     main()

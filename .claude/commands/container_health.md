@@ -335,8 +335,8 @@ kubectl debug -n mobius deployment/mobius-backend -it --image=busybox --target=m
 
 # Copy files from container for analysis
 # Define environment variables for paths, with sensible defaults
-# MOBIUS_LOG_PATH=${MOBIUS_LOG_PATH:-/var/log/mobius}
-# MOBIUS_TMP_DIR=${MOBIUS_TMP_DIR:-/tmp}
+# MOBIUS_LOG_PATH=${MOBIUS_LOG_PATH:-/var/log/mobius}  # Uncomment to override
+# MOBIUS_TMP_DIR=${MOBIUS_TMP_DIR:-/tmp}               # Uncomment to override
 # Example: kubectl cp mobius/mobius-backend-xxx:"$MOBIUS_LOG_PATH"/mobius.log ./mobius-debug.log
 
 # Run diagnostic commands

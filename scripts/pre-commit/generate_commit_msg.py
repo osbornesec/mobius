@@ -210,7 +210,37 @@ def generate_summary(diff_analysis, session_analysis):
     
     return '. '.join(summary_parts[:2])
 
-def main():    print("--- Running prepare-commit-msg hook ---")    print(f"Arguments: {sys.argv}")    commit_msg_filepath = sys.argv[1]    session_file = Path.cwd() / ".claude" / "sessions" / ".current-session"    if os.environ.get("SKIP_SESSION_COMMIT") == "1":        print("SKIP_SESSION_COMMIT is set, skipping.")        return    if not session_file.exists():        print("Session file not found, skipping.")        return    with open(session_file, "r") as f:        session_content = f.read()    # Get git diff    try:        diff_content = subprocess.check_output(['git', 'diff', '--staged'], text=True)    except subprocess.CalledProcessError:        diff_content = ""    # Try AI-powered summary first    summary = try_ai_summary(diff_content, session_content)        if not summary:        # Fall back to rule-based analysis        diff_analysis = analyze_diff(diff_content)        session_analysis = analyze_session(session_content)        summary = generate_summary(diff_analysis, session_analysis)    try:        with open(commit_msg_filepath, "w") as f:            f.write(summary)            f.write("\n\n")            f.write(session_content)        print("Successfully wrote to commit message file.")    except Exception as e:        print(f"Error writing to commit message file: {e}")
+def main():
+    session_file = Path.cwd() / ".claude" / "sessions" / ".current-session"
+
+    if os.environ.get("SKIP_SESSION_COMMIT") == "1":
+        return
+
+    if not session_file.exists():
+        return
+
+    with open(session_file, "r") as f:
+        session_content = f.read()
+
+    # Get git diff
+    try:
+        diff_content = subprocess.check_output(['git', 'diff', '--staged'], text=True)
+    except subprocess.CalledProcessError:
+        diff_content = ""
+
+    # Try AI-powered summary first
+    summary = try_ai_summary(diff_content, session_content)
+    
+    if not summary:
+        # Fall back to rule-based analysis
+        diff_analysis = analyze_diff(diff_content)
+        session_analysis = analyze_session(session_content)
+        summary = generate_summary(diff_analysis, session_analysis)
+
+    with open(".git/COMMIT_EDITMSG", "w") as f:
+        f.write(summary)
+        f.write("\n\n")
+        f.write(session_content)
 
 if __name__ == "__main__":
     main()

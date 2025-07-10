@@ -42,10 +42,10 @@ DB_PORT := 5432
 POSTGRES_CONTAINER := mobius-postgres
 REDIS_CONTAINER := mobius-redis
 
-# Service names
-SERVICES := postgres redis qdrant backend frontend
+
 
 .PHONY: help
+all: help ## Build & verify everything
 help: ## Show this help message
 	@echo -e "$(BLUE)Mobius Context Engineering Platform - Development Commands$(NC)"
 	@echo -e "$(BLUE)=========================================================$(NC)"
@@ -259,7 +259,7 @@ lint: ## Run all linters
 format: ## Format all code
 	@echo -e "$(BLUE)Formatting all code...$(NC)"
 	$(PYTHON_BIN) -m black app/ tests/
-	$(PYTHON_BIN) -m ruff check app/ tests/ --fix
+	$(PYTHON_BIN) -m ruff format app/ tests/
 	cd $(FRONTEND_DIR) && $(NPM) run format
 	@echo -e "$(GREEN)✓ Code formatting complete$(NC)"
 
@@ -493,8 +493,8 @@ monitor: ## Show service health and logs
 .PHONY: health
 health: ## Check health of all services
 	@echo -e "$(BLUE)Checking service health...$(NC)"
-	@curl -s http://localhost:8000/health || echo -e "$(RED)✗ Backend not responding$(NC)"
-	@curl -s http://localhost:3000 > /dev/null && echo -e "$(GREEN)✓ Frontend responding$(NC)" || echo -e "$(RED)✗ Frontend not responding$(NC)"
-	@curl -s http://localhost:6333/health || echo -e "$(RED)✗ Qdrant not responding$(NC)"
+	@curl -fsS http://localhost:8000/health >/dev/null   && echo -e "$(GREEN)✓ Backend healthy$(NC)"   || echo -e "$(RED)✗ Backend not healthy$(NC)"
+	@curl -fsS http://localhost:3000 > /dev/null && echo -e "$(GREEN)✓ Frontend responding$(NC)" || echo -e "$(RED)✗ Frontend not responding$(NC)"
+	@curl -fsS http://localhost:6333/health >/dev/null && echo -e "$(GREEN)✓ Qdrant healthy$(NC)" || echo -e "$(RED)✗ Qdrant not healthy$(NC)"
 	@docker exec $(POSTGRES_CONTAINER) pg_isready > /dev/null && echo -e "$(GREEN)✓ PostgreSQL ready$(NC)" || echo -e "$(RED)✗ PostgreSQL not ready$(NC)"
 	@docker exec $(REDIS_CONTAINER) redis-cli ping > /dev/null && echo -e "$(GREEN)✓ Redis ready$(NC)" || echo -e "$(RED)✗ Redis not ready$(NC)"

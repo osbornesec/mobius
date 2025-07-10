@@ -24,8 +24,9 @@ repos:
         entry: scripts/pre-commit/check-env-files.sh
         language: script
         files: \.env$
-    -   id: prepare-commit-msg
-        name: Prepare commit message
-        entry: scripts/prepare-commit-msg/create_session_commit.py
+    -   id: generate-commit-msg
+        name: Generate commit message
+        entry: scripts/pre-commit/generate_commit_msg.py
         language: python
-        stages: [prepare-commit-msg]
+        stages: [commit]
+        always_run: true

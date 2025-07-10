@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from pathlib import Path
 
 def is_env_file_access(tool_name, tool_input):
@@ -64,11 +65,22 @@ def format_with_prettier(tool_name, tool_input):
             if tool_name == 'Write':
                 print(f"📝 Will format {file_path} with Prettier after write completes", file=sys.stderr)
                 
-                subprocess.Popen(
-                    ['/bin/bash', '-c', f'sleep 1 && npx prettier --write {shlex.quote(str(file_path))} 2>/dev/null || true'],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
+                # Use a Python-based delayed formatting approach
+                import threading
+                
+                def delayed_format():
+                    time.sleep(1)
+                    if file_path_obj.exists():
+                        try:
+                            subprocess.run(
+                                ['npx', 'prettier', '--write', str(file_path_obj)],
+                                capture_output=True,
+                                timeout=30
+                            )
+                        except (subprocess.TimeoutExpired, FileNotFoundError):
+                            pass
+                
+                threading.Thread(target=delayed_format, daemon=True).start()
                 
                 return
             
@@ -87,10 +99,9 @@ def format_with_prettier(tool_name, tool_input):
                             prettier_cmd = str(prettier_path)
                             break
                     
-                    # If not found in common locations, try npx
+                    # Build command arguments consistently
                     if not prettier_cmd:
-                        prettier_cmd = 'npx'
-                        prettier_args = ['prettier', '--write', str(file_path_obj)]
+                        prettier_args = ['npx', 'prettier', '--write', str(file_path_obj)]
                     else:
                         prettier_args = [prettier_cmd, '--write', str(file_path_obj)]
                     
@@ -129,7 +140,6 @@ def format_with_prettier(tool_name, tool_input):
                     # Log unexpected errors for debugging
                     sys.stderr.write(f"⚠️  Unexpected error while formatting {file_path}: {type(e).__name__}: {str(e)}\n")
                     # Include traceback for unexpected errors to aid debugging
-                    import traceback
                     sys.stderr.write(f"   Traceback: {traceback.format_exc()}\n")
 
 def main():

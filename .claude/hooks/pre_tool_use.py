@@ -143,6 +143,11 @@ def format_with_prettier(tool_name, tool_input):
                     sys.stderr.write(f"   Traceback: {traceback.format_exc()}\n")
 
 def main():
+    """
+    Main entry point for the script that processes tool invocations, blocks unauthorized `.env` file access, formats files with Prettier when applicable, and logs each invocation to a JSON file for auditing.
+    
+    Reads input from standard input in JSON format, performs security and formatting checks, and maintains a log of all processed tool calls. Exits with code 2 if access to sensitive `.env` files is detected, or 0 on success or benign errors.
+    """
     try:
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
@@ -160,9 +165,6 @@ def main():
         format_with_prettier(tool_name, tool_input)
         
         if tool_name == 'Bash':
-            command = tool_input.get('command', '')
-            
-            if tool_name == 'Bash':
             command = tool_input.get('command', '')
         
         # Ensure log directory exists

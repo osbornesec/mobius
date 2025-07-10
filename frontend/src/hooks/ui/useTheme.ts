@@ -19,26 +19,35 @@ export function useTheme() {
   const { theme, setTheme } = useUIStore();
 
   useEffect(() => {
+    const root = document.documentElement;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = () => {
+
+    const applyTheme = () => {
+      if (theme === 'dark' || (theme === 'system' && mediaQuery.matches)) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    };
+
+    // Apply theme immediately
+    applyTheme();
+
+    // Listen for system theme changes
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
       if (theme === 'system') {
-        if (mediaQuery.matches) {
-          document.documentElement.classList.add('dark');
+        if (e.matches) {
+          root.classList.add('dark');
         } else {
-          document.documentElement.classList.remove('dark');
+          root.classList.remove('dark');
         }
       }
     };
 
-    // Initial setup
-    handleChange();
-
-    // Listen for system theme changes
-    mediaQuery.addEventListener('change', handleChange);
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
 
     return () => {
-      mediaQuery.removeEventListener('change', handleChange);
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
     };
   }, [theme]);
 

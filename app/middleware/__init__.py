@@ -20,9 +20,9 @@ from app.middleware.error_handler import (
 
 __all__ = [
     "CorrelationIdMiddleware",
-    "LoggingMiddleware",
     "ErrorHandlerMiddleware",
-    "setup_exception_handlers",
     "ErrorResponse",
+    "LoggingMiddleware",
     "get_correlation_id",
+    "setup_exception_handlers",
 ]

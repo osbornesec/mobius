@@ -17,7 +17,9 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import engine
-from app.core.logging import logger
+from app.core.logging import logger, LogConfig
+from app.middleware.correlation import CorrelationIdMiddleware
+from app.middleware.logging import LoggingMiddleware
 from app.models.database import Base
 
 
@@ -85,6 +87,17 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    # Add correlation ID handling (must be first to set correlation ID)
+    log_config = LogConfig()
+    app.add_middleware(
+        CorrelationIdMiddleware,
+        header_name=log_config.correlation_id_header,
+        generate_id_if_missing=True
+    )
+    
+    # Add request/response logging (after correlation ID middleware)
+    app.add_middleware(LoggingMiddleware, log_config=log_config)
     
     # Add Gzip compression
     app.add_middleware(GZipMiddleware, minimum_size=1000)

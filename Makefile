@@ -29,7 +29,7 @@ NPM := npm
 PNPM := pnpm
 
 # Docker settings
-DOCKER_COMPOSE := docker-compose
+DOCKER_COMPOSE := docker compose
 DOCKER_COMPOSE_FILE := docker-compose.yml
 
 # Database settings
@@ -91,12 +91,12 @@ docker-clean: ## Clean up volumes and containers
 	@echo -e "$(RED)Warning: This will remove all containers and volumes!$(NC)"
 	@read -p "Are you sure? [y/N] " -n 1 -r; \
 	echo ""; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+	if [[ $REPLY =~ ^[Yy]$ ]]; then \
 		echo -e "$(BLUE)Cleaning up Docker resources...$(NC)"; \
 		$(DOCKER_COMPOSE) -f $(DOCKER_COMPOSE_FILE) down -v --remove-orphans; \
-		docker system prune -f; \
 		echo -e "$(GREEN)✓ Docker cleanup complete$(NC)"; \
 	fi
+
 
 # =============================================
 # Backend Commands
@@ -257,7 +257,8 @@ lint: ## Run all linters
 .PHONY: format
 format: ## Format all code
 	@echo -e "$(BLUE)Formatting all code...$(NC)"
-	$(MAKE) backend-lint
+	$(PYTHON_BIN) -m black app/ tests/
+	$(PYTHON_BIN) -m ruff check app/ tests/ --fix
 	cd $(FRONTEND_DIR) && $(NPM) run format
 	@echo -e "$(GREEN)✓ Code formatting complete$(NC)"
 

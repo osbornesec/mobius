@@ -63,6 +63,7 @@ SENSITIVE_PATTERNS = [
 # Compile regex patterns once at module level for efficiency
 COMPILED_PATTERNS = [(re.compile(pattern, re.IGNORECASE | re.MULTILINE), label) 
                      for pattern, label in SENSITIVE_PATTERNS]
+COMBINED_SENSITIVE_REGEX = re.compile('|'.join(f'({pattern})' for pattern, _ in SENSITIVE_PATTERNS), re.IGNORECASE | re.MULTILINE)
 
 # Files that should never have their content logged
 SENSITIVE_FILES = [
@@ -549,7 +550,15 @@ def main():
         
         try:
             # Try to acquire lock with timeout
-            lock_fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            start_time = time.time()
+            while os.path.exists(lock_file) and time.time() - start_time < 30:
+                time.sleep(0.1)
+            
+            if os.path.exists(lock_file):
+                raise OSError("Could not acquire lock")
+
+            with open(lock_file, "w") as f:
+                f.write(str(os.getpid()))
             
             try:
                 # Extract conversations for ALL sessions found in transcript
@@ -586,8 +595,8 @@ def main():
                             
             finally:
                 # Release lock
-                os.close(lock_fd)
-                os.unlink(lock_file)
+                if os.path.exists(lock_file):
+                    os.unlink(lock_file)
                 
         except OSError:
             # Couldn't get lock, skip conversation to avoid duplicates

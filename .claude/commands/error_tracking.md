@@ -30,6 +30,7 @@ claude run error_tracking.md --service api --service frontend
 
 ```python
 import json
+import os
 import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
@@ -40,8 +41,10 @@ import subprocess
 class ErrorAnalyzer:
     """Analyze error patterns and frequencies"""
     
-    def __init__(self, log_dir: str = None):
-        self.log_dir = Path(log_dir or os.environ.get("MOBIUS_LOG_PATH", "/var/log/mobius"))
+    def __init__(self, log_dir: str | None = None):
+        # prefer explicit arg, then env var, then default
+        resolved = log_dir or os.environ.get("MOBIUS_LOG_PATH", "/var/log/mobius")
+        self.log_dir = Path(resolved)
         self.log_dir = Path(log_dir)
         self.error_patterns = {
             'database': r'(DatabaseError|psycopg2|SQLAlchemy)',

@@ -1,18 +1,18 @@
-# Pre-commit hooks
-pre-commit
-gitleaks
-ruff
-pyright
-validate-pyproject
-biome
-prettier
-mdformat
-mdformat-gfm
-mdformat-ruff
-mdformat-frontmatter
-markdownlint
-sqlfluff
-shellcheck-py
-bashate
-checkmake
-oxipng
+# Development-only Python packages
+# This file is managed by pip-tools. See pyproject.toml for dependencies.
+
+# Pre-commit hooks - managed by .pre-commit-config.yaml
+pre-commit==3.7.1
+
+# Python Linter & Formatter
+ruff==0.4.4
+
+# Python Type Checker
+pyright==1.1.366
+
+# SQL Linter & Formatter
+sqlfluff==3.0.7
+
+# Shell Script Linter
+shellcheck-py==0.10.0.1
+bashate==2.1.1

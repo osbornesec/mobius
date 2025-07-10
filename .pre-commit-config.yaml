@@ -28,5 +28,5 @@ repos:
         name: Generate commit message
         entry: scripts/pre-commit/generate_commit_msg.py
         language: python
-        stages: [commit]
+        stages: [commit-msg]
         always_run: true

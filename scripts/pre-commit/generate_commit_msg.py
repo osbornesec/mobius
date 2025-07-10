@@ -237,10 +237,9 @@ def main():
         session_analysis = analyze_session(session_content)
         summary = generate_summary(diff_analysis, session_analysis)
 
-    with open(".git/COMMIT_EDITMSG", "w") as f:
-        f.write(summary)
-        f.write("\n\n")
-        f.write(session_content)
+    print(summary)
+    print("\n\n")
+    print(session_content)
 
 if __name__ == "__main__":
     main()

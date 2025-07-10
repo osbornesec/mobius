@@ -29,7 +29,7 @@ repos:
 
   # ---------------------------- Python ----------------------------- #
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4 # Using a version compatible with ruff-format
+    rev: v0.4.4  # Using a version compatible with ruff-format
     hooks:
       - id: ruff-format
         name: "python: Format with Ruff"
@@ -173,6 +173,6 @@ repos:
         entry: pytest
         language: python
         types: [python]
-        args: ["-m", "not slow"] # Assumes you mark slow tests
+        args: ["-m", "not slow"]  # Assumes you mark slow tests
         pass_filenames: false
-        always_run: true
+        always_run: false

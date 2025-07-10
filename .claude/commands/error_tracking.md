@@ -40,7 +40,8 @@ import subprocess
 class ErrorAnalyzer:
     """Analyze error patterns and frequencies"""
     
-    def __init__(self, log_dir: str = "/var/log/mobius"):
+    def __init__(self, log_dir: str = None):
+        self.log_dir = Path(log_dir or os.environ.get("MOBIUS_LOG_PATH", "/var/log/mobius"))
         self.log_dir = Path(log_dir)
         self.error_patterns = {
             'database': r'(DatabaseError|psycopg2|SQLAlchemy)',

@@ -200,8 +200,20 @@ Running: echo "y" | {session_commit_script}
                         
                         # Execute the session commit script directly
                         # Wait a moment to ensure session file is fully written
-                        print("⏳ Waiting 30 seconds for session to be fully captured...", file=sys.stderr)
-                        time.sleep(30)
+                        # Polling for session lock file to be released
+                        sessions_dir = Path.cwd() / '.claude' / 'sessions'
+                        lock_file = sessions_dir / '.session.lock'
+                        timeout = 35  # seconds
+                        start_time = time.time()
+                        
+                        if lock_file.exists():
+                            print("⏳ Waiting for session file to be ready...", file=sys.stderr)
+                            while lock_file.exists():
+                                if time.time() - start_time > timeout:
+                                    print("⌛️ Timeout waiting for session lock file. Proceeding anyway.", file=sys.stderr)
+                                    break
+                                time.sleep(0.5)
+                            print("✅ Session file is ready.", file=sys.stderr)
                         
                         result = subprocess.run(
                             f'echo "y" | {session_commit_script}',

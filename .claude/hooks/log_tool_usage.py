@@ -411,9 +411,15 @@ def extract_all_conversations(transcript_path, transcript_dir):
                     with open(DEBUG_LOG_PATH, 'a') as f:
                         f.write(f"[{datetime.now()}] JSON decode error in transcript: {e}\n")
                     continue
+                except (OSError, IOError) as e:
+                    with open(DEBUG_LOG_PATH, 'a') as f:
+                        f.write(f"[{datetime.now()}] File error processing transcript line: {e}\n")
+                    continue
                 except Exception as e:
                     with open(DEBUG_LOG_PATH, 'a') as f:
                         f.write(f"[{datetime.now()}] Unexpected error processing transcript line: {e}\n")
+                        import traceback
+                        f.write(f"   Traceback: {traceback.format_exc()}\n")
                     continue
                     
     except (OSError, IOError) as e:

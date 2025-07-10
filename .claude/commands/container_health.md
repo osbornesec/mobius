@@ -334,7 +334,10 @@ EOF
 kubectl debug -n mobius deployment/mobius-backend -it --image=busybox --target=mobius-backend
 
 # Copy files from container for analysis
-kubectl cp mobius/mobius-backend-xxx:/var/log/mobius.log ./mobius-debug.log
+# Define environment variables for paths, with sensible defaults
+# MOBIUS_LOG_DIR=${MOBIUS_LOG_DIR:-/var/log/mobius}
+# MOBIUS_TMP_DIR=${MOBIUS_TMP_DIR:-/tmp}
+# Example: kubectl cp mobius/mobius-backend-xxx:"$MOBIUS_LOG_DIR"/mobius.log ./mobius-debug.log
 
 # Run diagnostic commands
 kubectl exec -n mobius deployment/mobius-backend -- python -m pip list
@@ -344,15 +347,15 @@ kubectl exec -n mobius deployment/mobius-backend -- python -c "import sys; print
 ### Performance Profiling
 ```bash
 # CPU profiling
-kubectl exec -n mobius deployment/mobius-backend -- python -m cProfile -o /tmp/profile.prof app.py
-kubectl cp mobius/mobius-backend-xxx:/tmp/profile.prof ./profile.prof
+# Example: kubectl exec -n mobius deployment/mobius-backend -- python -m cProfile -o "$MOBIUS_TMP_DIR"/profile.prof app.py
+# kubectl cp mobius/mobius-backend-xxx:"$MOBIUS_TMP_DIR"/profile.prof ./profile.prof
 
 # Memory profiling
 kubectl exec -n mobius deployment/mobius-backend -- python -m memory_profiler app.py
 
 # Network debugging
-kubectl exec -n mobius deployment/mobius-backend -- tcpdump -i any -w /tmp/capture.pcap
-kubectl cp mobius/mobius-backend-xxx:/tmp/capture.pcap ./capture.pcap
+# Example: kubectl exec -n mobius deployment/mobius-backend -- tcpdump -i any -w "$MOBIUS_TMP_DIR"/capture.pcap
+# kubectl cp mobius/mobius-backend-xxx:"$MOBIUS_TMP_DIR"/capture.pcap
 ```
 
 ## Automation Scripts

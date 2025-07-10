@@ -396,43 +396,47 @@ lint-all-docker: lint-docker lint-compose ## Run all Docker lints
 .PHONY: install-lint-tools
 install-lint-tools: ## Install Docker linting tools
 	@echo -e "$(BLUE)Installing Docker linting tools...$(NC)"
+	@# Create a temporary directory for downloads
+	@TEMP_DIR=$(mktemp -d);
 	@# Install hadolint
 	@echo -e "$(BLUE)Installing hadolint...$(NC)"
-	@if [ "$$(uname)" = "Darwin" ]; then \
+	@if [ "$(uname)" = "Darwin" ]; then \
 		if command -v brew >/dev/null 2>&1; then \
 			brew install hadolint; \
 		else \
 			echo -e "$(YELLOW)Homebrew not found. Installing hadolint manually...$(NC)"; \
-			curl -L https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Darwin-x86_64 -o /tmp/hadolint; \
-			chmod +x /tmp/hadolint; \
-			sudo mv /tmp/hadolint /usr/local/bin/hadolint || mv /tmp/hadolint ~/.local/bin/hadolint; \
+			curl -L https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Darwin-x86_64 -o $TEMP_DIR/hadolint; \
+			chmod +x $TEMP_DIR/hadolint; \
+			sudo mv $TEMP_DIR/hadolint /usr/local/bin/hadolint || mv $TEMP_DIR/hadolint ~/.local/bin/hadolint; \
 		fi; \
 	else \
-		wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64; \
-		chmod +x /tmp/hadolint; \
+		wget -O $TEMP_DIR/hadolint https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64; \
+		chmod +x $TEMP_DIR/hadolint; \
 		mkdir -p ~/.local/bin; \
-		mv /tmp/hadolint ~/.local/bin/hadolint; \
+		mv $TEMP_DIR/hadolint ~/.local/bin/hadolint; \
 		echo -e "$(YELLOW)hadolint installed to ~/.local/bin/hadolint$(NC)"; \
 		echo -e "$(YELLOW)Make sure ~/.local/bin is in your PATH$(NC)"; \
 	fi
 	@# Install dive
 	@echo -e "$(BLUE)Installing dive...$(NC)"
-	@if [ "$$(uname)" = "Darwin" ]; then \
+	@if [ "$(uname)" = "Darwin" ]; then \
 		if command -v brew >/dev/null 2>&1; then \
 			brew install dive; \
 		else \
 			echo -e "$(YELLOW)Please install dive manually from https://github.com/wagoodman/dive$(NC)"; \
 		fi; \
 	else \
-		wget -O /tmp/dive.tar.gz https://github.com/wagoodman/dive/releases/download/v0.11.0/dive_0.11.0_linux_amd64.tar.gz; \
-		tar -xzf /tmp/dive.tar.gz -C /tmp/; \
+		wget -O $TEMP_DIR/dive.tar.gz https://github.com/wagoodman/dive/releases/download/v0.11.0/dive_0.11.0_linux_amd64.tar.gz; \
+		tar -xzf $TEMP_DIR/dive.tar.gz -C $TEMP_DIR/; \
 		mkdir -p ~/.local/bin; \
-		mv /tmp/dive ~/.local/bin/dive; \
-		rm /tmp/dive.tar.gz; \
+		mv $TEMP_DIR/dive ~/.local/bin/dive; \
 		echo -e "$(YELLOW)dive installed to ~/.local/bin/dive$(NC)"; \
 		echo -e "$(YELLOW)Make sure ~/.local/bin is in your PATH$(NC)"; \
 	fi
+	@# Clean up the temporary directory
+	@rm -rf $TEMP_DIR;
 	@echo -e "$(GREEN)✓ Docker linting tools installed successfully$(NC)"
+
 
 .PHONY: security-scan-docker
 security-scan-docker: ## Run security scan on Docker images

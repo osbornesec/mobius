@@ -190,7 +190,8 @@ curl -X GET "http://localhost:6333/collections/context_embeddings" | jq '.result
 ### Search Performance Metrics
 ```bash
 # Benchmark search performance
-cat > /tmp/qdrant_search_test.py << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 import time
 import requests
 import numpy as np
@@ -232,7 +233,8 @@ if __name__ == "__main__":
     benchmark_search()
 EOF
 
-python /tmp/qdrant_search_test.py
+python $TEMP_SCRIPT
+rm $TEMP_SCRIPT
 ```
 
 ### Index Optimization Status
@@ -254,10 +256,11 @@ curl -X POST "http://localhost:6333/collections/context_embeddings/index" \
 curl -X GET "http://localhost:6333/telemetry" | jq '.'
 
 # Monitor memory usage
-docker stats qdrant --no-stream --format "table {{.Container}}\t{{.MemUsage}}\t{{.MemPerc}}"
+docker stats qdrant --no-stream --format "table {{.Container}}	{{.MemUsage}}	{{.MemPerc}}"
 
 # Collection memory footprint
-cat > /tmp/qdrant_memory_check.py << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 import requests
 import json
 
@@ -283,7 +286,8 @@ if __name__ == "__main__":
     check_memory_usage()
 EOF
 
-python /tmp/qdrant_memory_check.py
+python $TEMP_SCRIPT
+rm $TEMP_SCRIPT
 ```
 
 ## Redis Cache Health
@@ -321,7 +325,8 @@ redis-cli --bigkeys
 redis-cli MEMORY DOCTOR
 
 # Top keys by memory
-cat > /tmp/redis_memory_analysis.py << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 import redis
 import sys
 
@@ -353,17 +358,19 @@ if __name__ == "__main__":
     analyze_memory(pattern)
 EOF
 
-python /tmp/redis_memory_analysis.py
+python $TEMP_SCRIPT
+rm $TEMP_SCRIPT
 ```
 
 ### Key Expiration Patterns
 ```bash
 # TTL distribution
-cat > /tmp/redis_ttl_analysis.sh << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 #!/bin/bash
 
 echo "Redis TTL Distribution Analysis"
-echo "================================"
+echo "==============================="
 
 redis-cli --raw KEYS "*" | while read key; do
     ttl=$(redis-cli TTL "$key" 2>/dev/null)
@@ -389,7 +396,8 @@ done | awk '
     }'
 EOF
 
-bash /tmp/redis_ttl_analysis.sh
+bash $TEMP_SCRIPT
+rm $TEMP_SCRIPT
 ```
 
 ### Connection Pool Status
@@ -407,7 +415,8 @@ redis-cli MONITOR  # Use Ctrl+C to stop
 redis-cli SLOWLOG GET 10
 
 # Connection pool health check
-cat > /tmp/redis_connection_test.py << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 import redis
 from redis.connection import ConnectionPool
 import time
@@ -446,7 +455,8 @@ if __name__ == "__main__":
     test_connection_pool()
 EOF
 
-python /tmp/redis_connection_test.py
+python $TEMP_SCRIPT
+rm $TEMP_SCRIPT
 ```
 
 ## Migration & Schema Health
@@ -464,7 +474,8 @@ alembic history --verbose
 alembic check
 
 # Verify migration status
-cat > /tmp/check_migrations.py << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 import subprocess
 import sys
 
@@ -499,7 +510,8 @@ if __name__ == "__main__":
         sys.exit(1)
 EOF
 
-python /tmp/check_migrations.py
+python $TEMP_SCRIPT
+rm $TEMP_SCRIPT
 ```
 
 ### Schema Version Tracking
@@ -523,10 +535,12 @@ ORDER BY table_schema, table_name;"
 ### Schema Drift Analysis
 ```bash
 # Generate schema dump
-pg_dump -h localhost -U postgres -d mobius_db --schema-only > /tmp/current_schema.sql
+TEMP_SCHEMA_FILE=$(mktemp)
+pg_dump -h localhost -U postgres -d mobius_db --schema-only > $TEMP_SCHEMA_FILE
 
 # Compare with expected schema
-cat > /tmp/schema_drift_check.py << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 import subprocess
 import sqlalchemy
 from sqlalchemy import inspect
@@ -575,18 +589,21 @@ if __name__ == "__main__":
     check_schema_drift()
 EOF
 
-python /tmp/schema_drift_check.py
+python $TEMP_SCRIPT
+rm $TEMP_SCRIPT
+rm $TEMP_SCHEMA_FILE
 ```
 
 ## Combined Health Dashboard
 
 ### Quick Health Check Script
 ```bash
-cat > /tmp/mobius_db_health.sh << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 #!/bin/bash
 
 echo "🏥 Mobius Database Health Check"
-echo "================================"
+echo "==============================="
 echo
 
 # PostgreSQL
@@ -627,17 +644,19 @@ echo "🔄 Migration Status:"
 cd /home/michael/dev/Mobius && alembic current 2>/dev/null | grep -q "head" && echo "✅ Migrations up to date" || echo "⚠️  Pending migrations"
 
 echo
-echo "================================"
+echo "==============================="
 echo "Run specific sections above for detailed analysis"
 EOF
 
-chmod +x /tmp/mobius_db_health.sh
-/tmp/mobius_db_health.sh
+chmod +x $TEMP_SCRIPT
+$TEMP_SCRIPT
+rm $TEMP_SCRIPT
 ```
 
 ### Performance Monitoring Script
 ```bash
-cat > /tmp/mobius_perf_monitor.py << 'EOF'
+TEMP_SCRIPT=$(mktemp)
+cat > $TEMP_SCRIPT << 'EOF'
 #!/usr/bin/env python3
 
 import psycopg2
@@ -734,7 +753,7 @@ class MobiusHealthMonitor:
         redis_health = self.check_redis()
         print(f"\n💾 Redis: {redis_health['status'].upper()}")
         print(f"   Memory: {redis_health['used_memory_mb']:.2f} MB")
-        print(f"   Hit Rate: {redis_health['hit_rate']}%")
+        print(f"   Hit Rate: {redis_health['hit_rate']}%"
         print(f"   Clients: {redis_health['connected_clients']}")
         
         # Qdrant
@@ -751,7 +770,8 @@ if __name__ == "__main__":
     monitor.generate_report()
 EOF
 
-python /tmp/mobius_perf_monitor.py
+python $TEMP_SCRIPT
+rm $TEMP_SCRIPT
 ```
 
 ## Usage Instructions

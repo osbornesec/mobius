@@ -153,73 +153,73 @@ def main():
             command = tool_input.get('command', '')
             
             # Check for git commit commands
-            if re.match(r'^git\s+commit\b', command):
-                if '# allow-standard' in command.lower():
-                    # Allow commits with the special comment
-                    pass
-                else:
-                    # Check if we should auto-execute the session commit
-                    auto_commit = os.environ.get('CLAUDE_AUTO_SESSION_COMMIT', 'true').lower() == 'true'
-                    
-                    # Get the hooks directory path relative to current working directory
-                    hooks_dir = Path.cwd() / '.claude' / 'hooks'
-                    session_commit_script = hooks_dir / 'session_commit_detailed.sh'
-                    session_commit_advanced_script = hooks_dir / 'session_commit_advanced.py'
-                    
-                    if auto_commit:
-                        print(f"""🎯 Git commit intercepted - automatically running session commit workflow...
+            # if re.match(r'^git\s+commit\b', command):
+            #     if '# allow-standard' in command.lower():
+            #         # Allow commits with the special comment
+            #         pass
+            #     else:
+            #         # Check if we should auto-execute the session commit
+            #         auto_commit = os.environ.get('CLAUDE_AUTO_SESSION_COMMIT', 'true').lower() == 'true'
+            #         
+            #         # Get the hooks directory path relative to current working directory
+            #         hooks_dir = Path.cwd() / '.claude' / 'hooks'
+            #         session_commit_script = hooks_dir / 'session_commit_detailed.sh'
+            #         session_commit_advanced_script = hooks_dir / 'session_commit_advanced.py'
+            #         
+            #         if auto_commit:
+            #             print(f"""🎯 Git commit intercepted - automatically running session commit workflow...
 
-This will create a commit with your full session history.
-To use standard git commit instead, add '# allow-standard' to your command.
-To disable auto-execution, set CLAUDE_AUTO_SESSION_COMMIT=false
+# This will create a commit with your full session history.
+# To use standard git commit instead, add '# allow-standard' to your command.
+# To disable auto-execution, set CLAUDE_AUTO_SESSION_COMMIT=false
 
-Running: echo "y" | {session_commit_script}
-""", file=sys.stderr)
-                        
-                        # Execute the session commit script directly
-                        # Wait a moment to ensure session file is fully written
-                        # Polling for session lock file to be released
-                        sessions_dir = Path.cwd() / '.claude' / 'sessions'
-                        lock_file = sessions_dir / '.session.lock'
-                        timeout = 35  # seconds
-                        start_time = time.time()
-                        
-                        if lock_file.exists():
-                            print("⏳ Waiting for session file to be ready...", file=sys.stderr)
-                            while lock_file.exists():
-                                if time.time() - start_time > timeout:
-                                    print("⌛️ Timeout waiting for session lock file. Proceeding anyway.", file=sys.stderr)
-                                    break
-                                time.sleep(0.5)
-                            print("✅ Session file is ready.", file=sys.stderr)
-                        
-                        result = subprocess.run(
-                            f'echo "y" | {session_commit_script}',
-                            shell=True,
-                            capture_output=False
-                        )
-                        
-                        # Exit with the script's exit code
-                        sys.exit(result.returncode)
-                    else:
-                        print(f"""🛑 Git commit intercepted!
+# Running: echo "y" | {session_commit_script}
+# """, file=sys.stderr)
+            #             
+            #             # Execute the session commit script directly
+            #             # Wait a moment to ensure session file is fully written
+            #             # Polling for session lock file to be released
+            #             sessions_dir = Path.cwd() / '.claude' / 'sessions'
+            #             lock_file = sessions_dir / '.session.lock'
+            #             timeout = 35  # seconds
+            #             start_time = time.time()
+            #             
+            #             if lock_file.exists():
+            #                 print("⏳ Waiting for session file to be ready...", file=sys.stderr)
+            #                 while lock_file.exists():
+            #                     if time.time() - start_time > timeout:
+            #                         print("⌛️ Timeout waiting for session lock file. Proceeding anyway.", file=sys.stderr)
+            #                         break
+            #                     time.sleep(0.5)
+            #                 print("✅ Session file is ready.", file=sys.stderr)
+            #             
+            #             result = subprocess.run(
+            #                 f'echo "y" | {session_commit_script}',
+            #                 shell=True,
+            #                 capture_output=False
+            #             )
+            #             
+            #             # Exit with the script's exit code
+            #             sys.exit(result.returncode)
+            #         else:
+            #             print(f"""🛑 Git commit intercepted!
 
-Instead of using 'git commit' directly, consider using the session-based commit workflow
-that includes your complete development session in the commit message.
+# Instead of using 'git commit' directly, consider using the session-based commit workflow
+# that includes your complete development session in the commit message.
 
-Available options:
-1. Smart commit messages: python3 {session_commit_advanced_script}
-2. Full session commit: {session_commit_script}
+# Available options:
+# 1. Smart commit messages: python3 {session_commit_advanced_script}
+# 2. Full session commit: {session_commit_script}
 
-These scripts will:
-- Include your full session history in the commit
-- Generate contextual commit messages
-- Archive your session and start fresh
+# These scripts will:
+# - Include your full session history in the commit
+# - Generate contextual commit messages
+# - Archive your session and start fresh
 
-To bypass this check, add '# allow-standard' at the end of your command.
-Example: git commit -m "your message" # allow-standard
-""", file=sys.stderr)
-                        sys.exit(2)  # Block the git commit
+# To bypass this check, add '# allow-standard' at the end of your command.
+# Example: git commit -m "your message" # allow-standard
+# """, file=sys.stderr)
+            #             sys.exit(2)  # Block the git commit
         
         # Ensure log directory exists
         log_dir = Path.cwd() / 'logs'

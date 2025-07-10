@@ -1,11 +1,55 @@
-import '@testing-library/jest-dom'
-import { cleanup } from '@testing-library/react'
-import { afterEach, vi } from 'vitest'
+import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
+import { afterEach, vi, beforeEach } from 'vitest';
 
-// Cleanup after each test case (e.g. clearing jsdom)
+// Store reset functions for Zustand stores
+const storeResetFns = new Set<() => void>();
+
+// Mock Zustand
+vi.mock('zustand', async () => {
+  const { create: actualCreate, createStore: actualCreateStore } =
+    await vi.importActual<typeof import('zustand')>('zustand');
+
+  // Mock create function
+  const create = (<T>(stateCreator: any) => {
+    const store = actualCreate(stateCreator);
+    const initialState = store.getState();
+    storeResetFns.add(() => {
+      store.setState(initialState, true);
+    });
+    return store;
+  }) as typeof actualCreate;
+
+  // Mock createStore function
+  const createStore = (<T>(stateCreator: any) => {
+    const store = actualCreateStore(stateCreator);
+    const initialState = store.getInitialState();
+    storeResetFns.add(() => {
+      store.setState(initialState, true);
+    });
+    return store;
+  }) as typeof actualCreateStore;
+
+  return { create, createStore };
+});
+
+// Cleanup after each test case
 afterEach(() => {
-  cleanup()
-})
+  cleanup();
+  // Reset all Zustand stores
+  storeResetFns.forEach((resetFn) => resetFn());
+});
+
+// Setup localStorage mock
+beforeEach(() => {
+  const localStorageMock = {
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+  };
+  global.localStorage = localStorageMock as any;
+});
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -20,25 +64,25 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-})
+});
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
-  root = null
-  rootMargin = ''
-  thresholds = []
-  
+  root = null;
+  rootMargin = '';
+  thresholds = [];
+
   disconnect() {}
   observe() {}
   unobserve() {}
   takeRecords() {
-    return []
+    return [];
   }
-} as any
+} as any;
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
   disconnect() {}
   observe() {}
   unobserve() {}
-} as any
+} as any;

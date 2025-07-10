@@ -1,0 +1,83 @@
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { UIStore, Notification } from './types';
+
+const useUIStore = create<UIStore>()(
+  devtools(
+    persist(
+      (set, get) => ({
+        // State
+        theme: 'system',
+        sidebarOpen: true,
+        commandPaletteOpen: false,
+        notifications: [],
+
+        // Actions
+        setTheme: (theme) => {
+          set({ theme });
+          // Apply theme to document
+          if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        },
+
+        toggleSidebar: () => {
+          set((state) => ({ sidebarOpen: !state.sidebarOpen }));
+        },
+
+        setSidebarOpen: (open) => {
+          set({ sidebarOpen: open });
+        },
+
+        toggleCommandPalette: () => {
+          set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen }));
+        },
+
+        setCommandPaletteOpen: (open) => {
+          set({ commandPaletteOpen: open });
+        },
+
+        addNotification: (notification) => {
+          const id = Math.random().toString(36).substr(2, 9);
+          const newNotification: Notification = {
+            ...notification,
+            id,
+            createdAt: Date.now(),
+          };
+
+          set((state) => ({
+            notifications: [...state.notifications, newNotification],
+          }));
+
+          // Auto-remove notification after duration
+          if (notification.duration !== 0) {
+            setTimeout(() => {
+              get().removeNotification(id);
+            }, notification.duration || 5000);
+          }
+        },
+
+        removeNotification: (id) => {
+          set((state) => ({
+            notifications: state.notifications.filter((n) => n.id !== id),
+          }));
+        },
+
+        clearNotifications: () => {
+          set({ notifications: [] });
+        },
+      }),
+      {
+        name: 'ui-storage',
+        partialize: (state) => ({
+          theme: state.theme,
+          sidebarOpen: state.sidebarOpen,
+        }),
+      }
+    )
+  )
+);
+
+export default useUIStore;

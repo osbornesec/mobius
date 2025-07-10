@@ -1,10 +1,10 @@
-import { configureStore } from '@reduxjs/toolkit'
+/**
+ * Central export for all Zustand stores
+ */
 
-export const store = configureStore({
-  reducer: {
-    // Add your reducers here
-  },
-})
+export { default as useAuthStore } from './authStore'
+export { default as useContextStore } from './contextStore'
+export { default as useUIStore } from './uiStore'
 
-export type RootState = ReturnType<typeof store.getState>
-export type AppDispatch = typeof store.dispatch
+// Re-export types
+export * from './types'

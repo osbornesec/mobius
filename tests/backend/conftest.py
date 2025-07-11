@@ -13,10 +13,10 @@ import pytest
 def project_root() -> Path:
     """
     Get the project root directory.
-    
+
     This fixture is session-scoped to avoid repeated path calculations
     and provides a consistent base path for all tests.
-    
+
     Returns:
         Path: The absolute path to the project root directory
     """
@@ -27,10 +27,10 @@ def project_root() -> Path:
 def app_directory(project_root: Path) -> Path:
     """
     Get the app directory path.
-    
+
     Args:
         project_root: The project root directory fixture
-        
+
     Returns:
         Path: The absolute path to the app directory
     """
@@ -41,24 +41,24 @@ def app_directory(project_root: Path) -> Path:
 def frontend_directory(project_root: Path) -> Path:
     """
     Get the frontend directory path.
-    
+
     Args:
         project_root: The project root directory fixture
-        
+
     Returns:
         Path: The absolute path to the frontend directory
     """
     return project_root / "frontend"
 
 
-@pytest.fixture(scope="session")  
+@pytest.fixture(scope="session")
 def tests_directory(project_root: Path) -> Path:
     """
     Get the tests directory path.
-    
+
     Args:
         project_root: The project root directory fixture
-        
+
     Returns:
         Path: The absolute path to the tests directory
     """

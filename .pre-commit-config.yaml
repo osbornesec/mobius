@@ -8,7 +8,7 @@ exclude: |
   )$
 fail_fast: true
 default_language_version:
-  python: python3.12
+  python: python3.11
 default_install_hook_types:
   - pre-commit
   - commit-msg
@@ -21,7 +21,7 @@ repos:
     rev: v8.18.2
     hooks:
       - id: gitleaks
-        name: "security: Detect hardcoded secrets"
+        name: 'security: Detect hardcoded secrets'
 
   # =================================================================== #
   #                         Code Quality & Format                       #
@@ -29,41 +29,41 @@ repos:
 
   # ---------------------------- Python ----------------------------- #
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4  # Using a version compatible with ruff-format
+    rev: v0.4.4 # Using a version compatible with ruff-format
     hooks:
       - id: ruff-format
-        name: "python: Format with Ruff"
+        name: 'python: Format with Ruff'
       - id: ruff
-        name: "python: Lint and auto-fix with Ruff"
+        name: 'python: Lint and auto-fix with Ruff'
         args: [--fix, --exit-non-zero-on-fix]
 
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.366
     hooks:
       - id: pyright
-        name: "python: Check types with Pyright"
+        name: 'python: Check types with Pyright'
 
   - repo: https://github.com/abravalheri/validate-pyproject
     rev: v0.18
     hooks:
       - id: validate-pyproject
-        name: "python: Validate pyproject.toml"
-        additional_dependencies: ["validate-pyproject-schema-store[all]"]
+        name: 'python: Validate pyproject.toml'
+        additional_dependencies: ['validate-pyproject-schema-store[all]']
 
   # ---------------------------- Frontend --------------------------- #
   - repo: https://github.com/biomejs/pre-commit
-    rev: v0.3.3
+    rev: v0.4.0
     hooks:
       - id: biome-check
-        name: "frontend: Lint, format, and fix with Biome"
-        additional_dependencies: ["@biomejs/biome@1.7.3"]
+        name: 'frontend: Lint, format, and fix with Biome'
+        additional_dependencies: ['@biomejs/biome@1.7.3']
 
   # ---------------------------- Other Files ------------------------ #
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        name: "misc: Format YAML, HTML, SCSS"
+        name: 'misc: Format YAML, HTML, SCSS'
         types_or: [yaml, html, scss]
         additional_dependencies:
           - prettier@3.2.5
@@ -72,7 +72,7 @@ repos:
     rev: 0.7.17
     hooks:
       - id: mdformat
-        name: "markdown: Format markdown files"
+        name: 'markdown: Format markdown files'
         additional_dependencies:
           - mdformat-gfm
           - mdformat-ruff
@@ -82,40 +82,40 @@ repos:
     rev: v0.13.0
     hooks:
       - id: markdownlint
-        name: "markdown: Lint markdown files"
+        name: 'markdown: Lint markdown files'
 
   - repo: https://github.com/sqlfluff/sqlfluff
     rev: 3.0.7
     hooks:
       - id: sqlfluff-fix
-        name: "sql: Format and fix SQL files"
+        name: 'sql: Format and fix SQL files'
       - id: sqlfluff-lint
-        name: "sql: Lint SQL files"
+        name: 'sql: Lint SQL files'
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
     hooks:
       - id: shellcheck
-        name: "shell: Lint shell scripts"
+        name: 'shell: Lint shell scripts'
 
   - repo: https://github.com/openstack/bashate
     rev: 2.1.1
     hooks:
       - id: bashate
-        name: "shell: Check shell script style"
+        name: 'shell: Check shell script style'
 
   - repo: https://github.com/mrtazz/checkmake.git
     rev: 0.2.2
     hooks:
       - id: checkmake
-        name: "makefile: Lint Makefile"
+        name: 'makefile: Lint Makefile'
 
   - repo: https://github.com/shssoichiro/oxipng
     rev: v9.1.0
     hooks:
       - id: oxipng
-        name: "images: Optimize PNG files"
-        args: ["-o", "4", "--strip", "safe", "--alpha"]
+        name: 'images: Optimize PNG files'
+        args: ['-o', '4', '--strip', 'safe', '--alpha']
 
   # =================================================================== #
   #                         System & Git                                #
@@ -125,33 +125,33 @@ repos:
     hooks:
       # Git
       - id: check-merge-conflict
-        name: "git: Check for merge conflict markers"
+        name: 'git: Check for merge conflict markers'
       - id: forbid-new-submodules
-        name: "git: Prevent new submodules"
+        name: 'git: Prevent new submodules'
       - id: check-added-large-files
-        name: "git: Block large file commits"
-        args: ["--maxkb=5000"]
+        name: 'git: Block large file commits'
+        args: ['--maxkb=5000']
       - id: no-commit-to-branch
-        name: "git: Protect main branch"
-        args: ["--branch", "main"]
+        name: 'git: Protect main branch'
+        args: ['--branch', 'main']
       # Filesystem
       - id: check-executables-have-shebangs
-        name: "filesystem: Verify shebang presence"
+        name: 'filesystem: Verify shebang presence'
       - id: check-shebang-scripts-are-executable
-        name: "filesystem: Verify script permissions"
+        name: 'filesystem: Verify script permissions'
       - id: check-case-conflict
-        name: "filesystem: Check for case conflicts"
+        name: 'filesystem: Check for case conflicts'
       - id: check-symlinks
-        name: "filesystem: Check for broken symlinks"
+        name: 'filesystem: Check for broken symlinks'
       - id: destroyed-symlinks
-        name: "filesystem: Detect broken symlinks"
+        name: 'filesystem: Detect broken symlinks'
       # File Content
       - id: end-of-file-fixer
-        name: "file-content: Fix end-of-file"
+        name: 'file-content: Fix end-of-file'
       - id: trailing-whitespace
-        name: "file-content: Trim trailing whitespace"
+        name: 'file-content: Trim trailing whitespace'
       - id: check-yaml
-        name: "file-content: Check YAML syntax"
+        name: 'file-content: Check YAML syntax'
 
   # =================================================================== #
   #                          Local Hooks                                #
@@ -159,20 +159,20 @@ repos:
   - repo: local
     hooks:
       - id: check-env-files
-        name: "security: Check for committed .env files"
+        name: 'security: Check for committed .env files'
         entry: scripts/pre-commit/check-env-files.sh
         language: script
         files: \.env$
       - id: create-session-commit
-        name: "commit-msg: Create session commit message"
+        name: 'commit-msg: Create session commit message'
         entry: scripts/prepare-commit-msg/create_session_commit.py
         language: python
         stages: [commit-msg]
       - id: pytest-fast
-        name: "python: Run fast tests"
+        name: 'python: Run fast tests'
         entry: pytest
         language: python
         types: [python]
-        args: ["-m", "not slow"]  # Assumes you mark slow tests
+        args: ['-m', 'not slow'] # Assumes you mark slow tests
         pass_filenames: false
         always_run: false

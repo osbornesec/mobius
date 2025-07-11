@@ -48,7 +48,8 @@ def main():
                 file=sys.stderr,
             )
 
-    except Exception as e:
+-    except Exception as e:
++    except (IOError, OSError, UnicodeDecodeError) as e:
         # Log error but don't block operation
         print(f"Error checking line count for {file_path}: {e}", file=sys.stderr)
 

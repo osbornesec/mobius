@@ -19,32 +19,73 @@ export function useTheme() {
   const { theme, setTheme } = useUIStore();
 
   useEffect(() => {
-    const root = document.documentElement;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    try {
+      const root = document.documentElement;
+      let mediaQuery: MediaQueryList | null = null;
 
-    const applyTheme = () => {
-      const shouldBeDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches);
-      if (shouldBeDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
+      // Safely create media query with error handling
+      try {
+        mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      } catch (error) {
+        console.warn('Failed to detect system color scheme preference:', error);
+        // Fall back to light theme if media query fails
+        mediaQuery = null;
       }
-    };
 
-    // Apply theme immediately
-    applyTheme();
+      const applyTheme = () => {
+        try {
+          const shouldBeDark =
+            theme === 'dark' || (theme === 'system' && mediaQuery?.matches === true);
 
-    // Only add the event listener when theme is 'system'
-    if (theme === 'system') {
-      mediaQuery.addEventListener('change', applyTheme);
+          if (shouldBeDark) {
+            root.classList.add('dark');
+          } else {
+            root.classList.remove('dark');
+          }
+        } catch (error) {
+          console.error('Failed to apply theme:', error);
+          // Ensure we at least remove dark class on error
+          root.classList.remove('dark');
+        }
+      };
+
+      // Apply theme immediately
+      applyTheme();
+
+      // Only add the event listener when theme is 'system' and mediaQuery is available
+      if (theme === 'system' && mediaQuery) {
+        try {
+          if (mediaQuery.addEventListener) {
+            mediaQuery.addEventListener('change', applyTheme);
+          } else {
+            // Safari < 14 fallback
+            (mediaQuery as any).addListener(applyTheme);
+          }
+        } catch (error) {
+          console.warn('Failed to add theme change listener:', error);
+        }
+      }
+
+      return () => {
+        // Only remove the event listener when theme is 'system' and mediaQuery exists
+        if (theme === 'system' && mediaQuery) {
+          try {
+            if (mediaQuery.removeEventListener) {
+              mediaQuery.removeEventListener('change', applyTheme);
+            } else {
+              // Safari < 14 fallback
+              (mediaQuery as any).removeListener(applyTheme);
+            }
+          } catch (error) {
+            console.warn('Failed to remove theme change listener:', error);
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Critical error in theme hook:', error);
+      // Return no-op cleanup function on critical error
+      return () => {};
     }
-
-    return () => {
-      // Only remove the event listener when theme is 'system'
-      if (theme === 'system') {
-        mediaQuery.removeEventListener('change', applyTheme);
-      }
-    };
   }, [theme]);
 
   return { theme, setTheme };

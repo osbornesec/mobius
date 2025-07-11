@@ -11,20 +11,52 @@ on:
     #   - "src/**/*.jsx"
 
 jobs:
+  check-pr-size:
+    runs-on: ubuntu-latest
+    outputs:
+      should_review: ${{ steps.check.outputs.should_review }}
+      warning_message: ${{ steps.check.outputs.warning_message }}
+    steps:
+      - name: Check PR size
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const fileCount = pr.changed_files;
+            const additions = pr.additions;
+            const deletions = pr.deletions;
+            const totalChanges = additions + deletions;
+
+            // Skip review if PR is too large
+            const skipReview = fileCount > 50 || totalChanges > 5000;
+            const shouldReview = !skipReview;
+
+            let warningMessage = '';
+            if (skipReview) {
+              warningMessage = `PR too large for automated review: ${fileCount} files, +${additions}/-${deletions} changes`;
+            }
+
+            core.setOutput('should_review', shouldReview);
+            core.setOutput('warning_message', warningMessage);
+
+            console.log(`PR size: ${fileCount} files, +${additions}/-${deletions}`);
+            console.log(`Should review: ${shouldReview}`);
+
   claude-review:
+    needs: check-pr-size
+    if: needs['check-pr-size'].outputs.should_review == 'true'
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
     #   github.event.pull_request.user.login == 'new-developer' ||
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-    
+
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
-      id-token: write
-    
+      pull-requests: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,7 +71,7 @@ jobs:
 
           # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
           # model: "claude-opus-4-20250514"
-          
+
           # Direct prompt for automated review (no @claude mention needed)
           direct_prompt: |
             Please review this pull request and provide feedback on:
@@ -48,12 +80,22 @@ jobs:
             - Performance considerations
             - Security concerns
             - Test coverage
-            
+
             Be constructive and helpful in your feedback.
+
+          # Add custom instructions to handle large PRs
+          custom_instructions: |
+            If the PR is very large, focus on the most critical aspects:
+            1. Core architectural changes
+            2. Security-sensitive code
+            3. API changes
+            4. Critical business logic
+
+            For large PRs, provide a high-level summary first, then detailed feedback on the most important areas.
 
           # Optional: Use sticky comments to make Claude reuse the same comment on subsequent pushes to the same PR
           # use_sticky_comment: true
-          
+
           # Optional: Customize review based on file types
           # direct_prompt: |
           #   Review this PR focusing on:
@@ -61,18 +103,56 @@ jobs:
           #   - For API endpoints: Security, input validation, and error handling
           #   - For React components: Performance, accessibility, and best practices
           #   - For tests: Coverage, edge cases, and test quality
-          
+
           # Optional: Different prompts for different authors
           # direct_prompt: |
-          #   ${{ github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR' && 
+          #   ${{ github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR' &&
           #   'Welcome! Please review this PR from a first-time contributor. Be encouraging and provide detailed explanations for any suggestions.' ||
           #   'Please provide a thorough code review focusing on our coding standards and best practices.' }}
-          
+
           # Optional: Add specific tools for running tests or linting
           # allowed_tools: "Bash(npm run test),Bash(npm run lint),Bash(npm run typecheck)"
-          
+
           # Optional: Skip review for certain conditions
           # if: |
           #   !contains(github.event.pull_request.title, '[skip-review]') &&
           #   !contains(github.event.pull_request.title, '[WIP]')
 
+  skip-large-pr:
+    needs: check-pr-size
+    if: needs['check-pr-size'].outputs.should_review == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post skip message
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const warningMessage = "${{ needs['check-pr-size'].outputs.warning_message }}";
+
+            const comment = `## ⚠️ Claude Code Review Skipped
+
+            ${warningMessage}
+
+            ### Why was this PR skipped?
+            Large PRs can exceed Claude's context window limit, causing the review to fail. To ensure reliable reviews, we skip PRs that:
+            - Have more than 50 changed files, OR
+            - Have more than 5,000 total line changes
+
+            ### What can you do?
+            1. **Split this PR** into smaller, focused changes
+            2. **Request manual review** with \`@claude\` on specific files or directories
+            3. **Add [skip-review]** to the PR title if review is not needed
+
+            For best results, aim for PRs with:
+            - Less than 20 files changed
+            - Less than 1,000 lines changed
+            - Single, focused purpose`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

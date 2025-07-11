@@ -6,7 +6,7 @@
 ```bash
 # Check active connections and pool status
 psql -h localhost -U postgres -d mobius_db -c "
-SELECT 
+SELECT
     datname,
     count(*) as connections,
     state,
@@ -19,12 +19,12 @@ ORDER BY connections DESC;"
 
 # Connection pool efficiency
 psql -h localhost -U postgres -d mobius_db -c "
-SELECT 
+SELECT
     max_conn,
     used,
     res_for_super,
     max_conn - used - res_for_super AS available
-FROM 
+FROM
     (SELECT count(*) used FROM pg_stat_activity) t1,
     (SELECT setting::int res_for_super FROM pg_settings WHERE name='superuser_reserved_connections') t2,
     (SELECT setting::int max_conn FROM pg_settings WHERE name='max_connections') t3;"
@@ -34,7 +34,7 @@ FROM
 ```bash
 # Top 10 slowest queries
 psql -h localhost -U postgres -d mobius_db -c "
-SELECT 
+SELECT
     substring(query, 1, 100) as query_preview,
     mean_exec_time::numeric(10,2) as avg_ms,
     calls,
@@ -47,7 +47,7 @@ LIMIT 10;"
 
 # Query cache hit ratio
 psql -h localhost -U postgres -d mobius_db -c "
-SELECT 
+SELECT
     sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) as cache_hit_ratio
 FROM pg_statio_user_tables;"
 ```
@@ -56,7 +56,7 @@ FROM pg_statio_user_tables;"
 ```bash
 # Unused indexes
 psql -h localhost -U postgres -d mobius_db -c "
-SELECT 
+SELECT
     schemaname,
     tablename,
     indexname,
@@ -71,7 +71,7 @@ ORDER BY pg_relation_size(indexrelid) DESC;"
 
 # Missing indexes (sequential scan heavy tables)
 psql -h localhost -U postgres -d mobius_db -c "
-SELECT 
+SELECT
     schemaname,
     tablename,
     seq_scan,
@@ -200,11 +200,11 @@ import json
 def benchmark_search(collection_name="context_embeddings", num_queries=100, vector_dim=1536):
     """Benchmark Qdrant search performance"""
     latencies = []
-    
+
     for _ in range(num_queries):
         # Generate random vector
         vector = np.random.rand(vector_dim).tolist()
-        
+
         # Time the search
         start = time.time()
         response = requests.post(
@@ -216,10 +216,10 @@ def benchmark_search(collection_name="context_embeddings", num_queries=100, vect
             }
         )
         end = time.time()
-        
+
         if response.status_code == 200:
             latencies.append((end - start) * 1000)  # Convert to ms
-    
+
     # Calculate statistics
     print(f"Search Performance for {collection_name}:")
     print(f"  Queries: {len(latencies)}")
@@ -266,20 +266,20 @@ import json
 
 def check_memory_usage():
     collections = requests.get("http://localhost:6333/collections").json()
-    
+
     print("Qdrant Memory Usage by Collection:")
     print("-" * 60)
-    
+
     for collection in collections['result']['collections']:
         name = collection['name']
         info = requests.get(f"http://localhost:6333/collections/{name}").json()
-        
+
         points = info['result']['points_count']
         vector_size = info['result']['config']['params']['vectors']['size']
-        
+
         # Estimate memory usage (rough calculation)
         memory_mb = (points * vector_size * 4) / (1024 * 1024)  # 4 bytes per float
-        
+
         print(f"{name:30} Points: {points:10} Est. Memory: {memory_mb:.2f} MB")
 
 if __name__ == "__main__":
@@ -336,7 +336,7 @@ def analyze_memory(pattern='*', limit=20):
     """Analyze Redis memory usage by key pattern"""
     keys = r.keys(pattern)
     key_sizes = []
-    
+
     for key in keys[:1000]:  # Sample first 1000 keys
         try:
             memory = r.memory_usage(key)
@@ -344,10 +344,10 @@ def analyze_memory(pattern='*', limit=20):
                 key_sizes.append((key, memory))
         except:
             pass
-    
+
     # Sort by size
     key_sizes.sort(key=lambda x: x[1], reverse=True)
-    
+
     print(f"Top {limit} keys by memory usage:")
     print("-" * 60)
     for key, size in key_sizes[:limit]:
@@ -426,7 +426,7 @@ def test_connection_pool(max_connections=50):
     """Test Redis connection pool behavior"""
     pool = ConnectionPool(host='localhost', port=6379, max_connections=max_connections)
     r = redis.Redis(connection_pool=pool)
-    
+
     def worker(worker_id):
         try:
             start = time.time()
@@ -435,17 +435,17 @@ def test_connection_pool(max_connections=50):
             print(f"Worker {worker_id}: Connected in {duration:.2f}ms")
         except Exception as e:
             print(f"Worker {worker_id}: Failed - {e}")
-    
+
     # Create many concurrent connections
     threads = []
     for i in range(max_connections + 10):  # Exceed pool size
         t = threading.Thread(target=worker, args=(i,))
         threads.append(t)
         t.start()
-    
+
     for t in threads:
         t.join()
-    
+
     # Check pool stats
     print(f"\nPool Stats:")
     print(f"  Created Connections: {pool.created_connections}")
@@ -484,10 +484,10 @@ def check_migration_status():
     try:
         # Get current revision
         current = subprocess.check_output(['alembic', 'current'], text=True)
-        
+
         # Get head revision
         head = subprocess.check_output(['alembic', 'heads'], text=True)
-        
+
         # Compare
         if head.strip() in current:
             print("✅ Database is up to date with migrations")
@@ -496,11 +496,11 @@ def check_migration_status():
             print("⚠️  Pending migrations detected!")
             print(f"Current: {current.strip()}")
             print(f"Head: {head.strip()}")
-            
+
             # Show pending migrations
             subprocess.call(['alembic', 'history', '-r', f'current:heads'])
             return False
-            
+
     except subprocess.CalledProcessError as e:
         print(f"❌ Error checking migrations: {e}")
         return False
@@ -518,12 +518,12 @@ rm $TEMP_SCRIPT
 ```bash
 # Check alembic version table
 psql -h localhost -U postgres -d mobius_db -c "
-SELECT version_num, branch_labels 
+SELECT version_num, branch_labels
 FROM alembic_version;"
 
 # Schema metadata
 psql -h localhost -U postgres -d mobius_db -c "
-SELECT 
+SELECT
     table_schema,
     table_name,
     table_type
@@ -548,36 +548,36 @@ import difflib
 
 def check_schema_drift():
     """Compare actual database schema with SQLAlchemy models"""
-    
+
     # Connect to database
     engine = sqlalchemy.create_engine('postgresql://postgres:password@localhost/mobius_db')
     inspector = inspect(engine)
-    
+
     # Get actual tables
     actual_tables = set(inspector.get_table_names())
-    
+
     # Expected tables from models (update this list based on your models)
     expected_tables = {
-        'users', 'contexts', 'documents', 'embeddings', 
+        'users', 'contexts', 'documents', 'embeddings',
         'workspaces', 'tags', 'alembic_version'
     }
-    
+
     # Find differences
     missing_tables = expected_tables - actual_tables
     extra_tables = actual_tables - expected_tables
-    
+
     print("Schema Drift Analysis")
     print("=" * 50)
-    
+
     if missing_tables:
         print(f"❌ Missing tables: {missing_tables}")
-    
+
     if extra_tables:
         print(f"⚠️  Extra tables: {extra_tables}")
-    
+
     if not missing_tables and not extra_tables:
         print("✅ All expected tables present")
-    
+
     # Check column drift for common tables
     common_tables = actual_tables & expected_tables
     for table in common_tables:
@@ -612,7 +612,7 @@ psql -h localhost -U postgres -d mobius_db -t -c "
 SELECT 'Active Connections: ' || count(*) FROM pg_stat_activity;" 2>/dev/null || echo "❌ PostgreSQL connection failed"
 
 psql -h localhost -U postgres -d mobius_db -t -c "
-SELECT 'Cache Hit Rate: ' || ROUND(100.0 * sum(heap_blks_hit) / 
+SELECT 'Cache Hit Rate: ' || ROUND(100.0 * sum(heap_blks_hit) /
     (sum(heap_blks_hit) + sum(heap_blks_read)), 2) || '%'
 FROM pg_statio_user_tables;" 2>/dev/null
 
@@ -676,38 +676,38 @@ class MobiusHealthMonitor:
         )
         self.redis_client = redis.Redis(host='localhost', port=6379)
         self.qdrant_url = "http://localhost:6333"
-    
+
     def check_postgresql(self):
         """Check PostgreSQL health metrics"""
         cursor = self.pg_conn.cursor()
-        
+
         # Query performance
         cursor.execute("""
-            SELECT 
+            SELECT
                 COALESCE(SUM(numbackends), 0) as connections,
                 COALESCE(SUM(xact_commit), 0) as commits,
                 COALESCE(SUM(xact_rollback), 0) as rollbacks
-            FROM pg_stat_database 
+            FROM pg_stat_database
             WHERE datname = 'mobius_db'
         """)
         stats = cursor.fetchone()
-        
+
         return {
             "connections": stats[0],
             "commits": stats[1],
             "rollbacks": stats[2],
             "status": "healthy" if stats[0] < 90 else "warning"
         }
-    
+
     def check_redis(self):
         """Check Redis health metrics"""
         info = self.redis_client.info()
-        
+
         hit_rate = 0
         if info['keyspace_hits'] + info['keyspace_misses'] > 0:
-            hit_rate = (info['keyspace_hits'] / 
+            hit_rate = (info['keyspace_hits'] /
                        (info['keyspace_hits'] + info['keyspace_misses'])) * 100
-        
+
         return {
             "used_memory_mb": info['used_memory'] / 1024 / 1024,
             "connected_clients": info['connected_clients'],
@@ -715,20 +715,20 @@ class MobiusHealthMonitor:
             "evicted_keys": info.get('evicted_keys', 0),
             "status": "healthy" if hit_rate > 80 else "warning"
         }
-    
+
     def check_qdrant(self):
         """Check Qdrant health metrics"""
         try:
             response = requests.get(f"{self.qdrant_url}/collections")
             collections = response.json()['result']['collections']
-            
+
             total_points = 0
             for collection in collections:
                 coll_info = requests.get(
                     f"{self.qdrant_url}/collections/{collection['name']}"
                 ).json()
                 total_points += coll_info['result']['points_count']
-            
+
             return {
                 "collections": len(collections),
                 "total_points": total_points,
@@ -736,33 +736,33 @@ class MobiusHealthMonitor:
             }
         except:
             return {"status": "error"}
-    
+
     def generate_report(self):
         """Generate comprehensive health report"""
         print(f"\n🏥 Mobius Health Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print("=" * 70)
-        
+
         # PostgreSQL
         pg_health = self.check_postgresql()
         print(f"\n📊 PostgreSQL: {pg_health['status'].upper()}")
         print(f"   Connections: {pg_health['connections']}")
         print(f"   Commits: {pg_health['commits']}")
         print(f"   Rollbacks: {pg_health['rollbacks']}")
-        
+
         # Redis
         redis_health = self.check_redis()
         print(f"\n💾 Redis: {redis_health['status'].upper()}")
         print(f"   Memory: {redis_health['used_memory_mb']:.2f} MB")
-        print(f"   Hit Rate: {redis_health['hit_rate']}%"
+        print(f"   Hit Rate: {redis_health['hit_rate']}%")
         print(f"   Clients: {redis_health['connected_clients']}")
-        
+
         # Qdrant
         qdrant_health = self.check_qdrant()
         print(f"\n🔍 Qdrant: {qdrant_health['status'].upper()}")
         if qdrant_health['status'] != 'error':
             print(f"   Collections: {qdrant_health['collections']}")
             print(f"   Total Points: {qdrant_health['total_points']}")
-        
+
         print("\n" + "=" * 70)
 
 if __name__ == "__main__":

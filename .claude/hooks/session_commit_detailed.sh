@@ -1,9 +1,15 @@
 #!/bin/bash
 
+# Enable strict error handling
+# -e: Exit immediately if any command exits with non-zero status
+# -u: Treat unset variables as an error and exit
+# -o pipefail: Return value of a pipeline is the status of the last command to exit with non-zero status
+set -euo pipefail
+
 # Session Commit Detailed Script
 # Purpose: Creates a git commit with a detailed summary of the current Claude session
 # Usage: ./session_commit_detailed.sh
-# 
+#
 # This script will:
 # - Extract a summary of work done from the current session file
 # - Analyze staged files to determine commit scope
@@ -71,8 +77,9 @@ TEMP_DIFF="$(mktemp -t staged_changes_XXXXXX.diff)"
 git diff --cached > "$TEMP_DIFF"
 
 # Extract key changes from session file for context
-RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20)
-
+# Use '|| true' to prevent grep from failing if no matches found
+# Uncomment to include recent actions in the commit body
+# RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20 || true)
 # Use the AI summary generator
 AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 "$SCRIPT_DIR/generate_commit_summary.py" "$TEMP_DIFF" 2>/dev/null)
 
@@ -112,7 +119,7 @@ echo "----------------------------------------"
 echo -e "\n${YELLOW}Session Statistics:${NC}"
 echo "- Total message size: ${#COMMIT_MESSAGE} characters"
 echo "- Files modified: $(echo "$STAGED_FILES" | wc -l)"
-echo "- Tool executions: $(grep -c "### \[" "$SESSION_FILE" || echo "0")"
+echo "- Tool executions: $(grep -c "### \[" "$SESSION_FILE" 2>/dev/null || echo "0")"
 
 # Warn about large commits
 if [ ${#COMMIT_MESSAGE} -gt 50000 ]; then
@@ -136,29 +143,29 @@ echo "$COMMIT_MESSAGE" > "$TEMP_FILE"
 # Create the commit
 if git commit -F "$TEMP_FILE"; then
   echo -e "${GREEN}✓ Commit created successfully!${NC}"
-  
+
   # Clean up temp file
   rm -f "$TEMP_FILE"
-  
+
   # Archive the current session
   TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
   ARCHIVE_NAME="session_${TIMESTAMP}_committed.md"
   mkdir -p "$SESSION_DIR/archive"
   cp "$SESSION_FILE" "$SESSION_DIR/archive/$ARCHIVE_NAME"
-  
+
   # Reset .current-session with a fresh session
   cat > "$SESSION_FILE" << EOF
 # Development Session - $(date +'%Y-%m-%d %H:%M')
 
 ## Session Overview
 - **Start Time**: $(date +'%B %d, %Y at %H:%M')
-- **Project**: dev/Mobius  
+- **Project**: dev/Mobius
 - **Working Directory**: $(pwd)
 - **Previous Session**: Archived as $ARCHIVE_NAME
 
 ## Progress
 EOF
-  
+
   echo -e "\n${GREEN}✓ Session reset complete!${NC}"
   echo -e "- Session archived to: ${BLUE}archive/$ARCHIVE_NAME${NC}"
   echo -e "- New session started in: ${BLUE}.current-session${NC}"

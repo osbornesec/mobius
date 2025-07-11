@@ -150,9 +150,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     await create_db_tables()
     await redis_client.initialize()
     await VectorService.initialize()
-    
+
     yield
-    
+
     # Shutdown
     await redis_client.close()
     await VectorService.close()
@@ -171,7 +171,7 @@ def create_application() -> FastAPI:
         redoc_url=f"{settings.API_V1_STR}/redoc",
         lifespan=lifespan
     )
-    
+
     # Set up CORS
     app.add_middleware(
         CORSMiddleware,
@@ -180,13 +180,13 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Add compression
     app.add_middleware(GZipMiddleware, minimum_size=1000)
-    
+
     # Include API router
     app.include_router(api_router, prefix=settings.API_V1_STR)
-    
+
     return app
 
 
@@ -204,20 +204,20 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application settings with Pydantic validation."""
-    
+
     # Project Settings
     PROJECT_NAME: str = "Mobius Context Engineering Platform"
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
-    
+
     # Security
     SECRET_KEY: str = Field(..., min_length=32)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     ALGORITHM: str = "HS256"
-    
+
     # CORS
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
-    
+
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
         if isinstance(v, str) and not v.startswith("["):
@@ -225,14 +225,14 @@ class Settings(BaseSettings):
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
-    
+
     # PostgreSQL
     POSTGRES_SERVER: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     DATABASE_URL: Optional[PostgresDsn] = None
-    
+
     @validator("DATABASE_URL", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: dict) -> str:
         if isinstance(v, str):
@@ -244,33 +244,33 @@ class Settings(BaseSettings):
             host=values.get("POSTGRES_SERVER"),
             path=f"/{values.get('POSTGRES_DB') or ''}",
         )
-    
+
     # Redis
     REDIS_URL: RedisDsn = "redis://localhost:6379/0"
     REDIS_CACHE_TTL: int = 3600  # 1 hour default
-    
+
     # Qdrant
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
     QDRANT_API_KEY: Optional[str] = None
     QDRANT_COLLECTION_NAME: str = "mobius_contexts"
-    
+
     # OpenAI
     OPENAI_API_KEY: str
     OPENAI_MODEL: str = "text-embedding-3-small"
     OPENAI_EMBEDDING_DIMENSION: int = 1536
-    
+
     # Performance
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 40
     REDIS_POOL_SIZE: int = 10
     BATCH_SIZE: int = 100
     MAX_WORKERS: int = 4
-    
+
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_HOUR: int = 1000
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True
@@ -324,7 +324,7 @@ async def get_current_user(
 ) -> User:
     """Dependency for getting current authenticated user."""
     token = credentials.credentials
-    
+
     try:
         payload = verify_token(token)
         user_id = payload.get("sub")
@@ -338,7 +338,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication token"
         )
-    
+
     # Get user from database
     user = await db.get(User, user_id)
     if not user:
@@ -346,7 +346,7 @@ async def get_current_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     return user
 
 
@@ -391,7 +391,7 @@ async def list_projects(
         limit=limit,
         search=search
     )
-    
+
     return ProjectListResponse(
         items=projects,
         total=total,
@@ -456,7 +456,7 @@ class ProjectCreate(ProjectBase):
     repository_url: Optional[str] = None
     framework: Optional[str] = None
     language: str = Field(..., regex="^(python|javascript|typescript)$")
-    
+
     @field_validator('repository_url')
     @classmethod
     def validate_repository_url(cls, v: Optional[str]) -> Optional[str]:
@@ -471,7 +471,7 @@ class ProjectUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     tags: Optional[List[str]] = None
     metadata: Optional[Dict[str, Any]] = None
-    
+
     model_config = ConfigDict(extra='forbid')
 
 
@@ -495,7 +495,7 @@ class ProjectResponse(BaseModel):
     updated_at: datetime
     owner_id: str
     context_count: int = 0
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -553,7 +553,7 @@ class PermissionError(APIException):
 
 def setup_exception_handlers(app: FastAPI) -> None:
     """Configure global exception handlers."""
-    
+
     @app.exception_handler(APIException)
     async def api_exception_handler(request: Request, exc: APIException):
         return JSONResponse(
@@ -564,7 +564,7 @@ def setup_exception_handlers(app: FastAPI) -> None:
                 "request_id": request.state.request_id
             }
         )
-    
+
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         logger.warning(f"Validation error: {exc.errors()}")
@@ -592,59 +592,59 @@ from app.core.config import settings
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Rate limiting middleware using Redis."""
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip rate limiting for health checks
         if request.url.path == "/api/v1/health":
             return await call_next(request)
-        
+
         # Get client identifier (IP or user ID)
         client_id = self._get_client_id(request)
-        
+
         # Check rate limits
         if not await self._check_rate_limit(client_id):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Rate limit exceeded"
             )
-        
+
         response = await call_next(request)
         return response
-    
+
     def _get_client_id(self, request: Request) -> str:
         """Get client identifier from request."""
         # Try to get user ID from JWT token
         if hasattr(request.state, "user_id"):
             return f"user:{request.state.user_id}"
-        
+
         # Fall back to IP address
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             return f"ip:{forwarded.split(',')[0]}"
         return f"ip:{request.client.host}"
-    
+
     async def _check_rate_limit(self, client_id: str) -> bool:
         """Check if client has exceeded rate limits."""
         redis = redis_client.get_client()
-        
+
         # Check per-minute limit
         minute_key = f"rate_limit:minute:{client_id}"
         minute_count = await redis.incr(minute_key)
         if minute_count == 1:
             await redis.expire(minute_key, 60)
-        
+
         if minute_count > settings.RATE_LIMIT_PER_MINUTE:
             return False
-        
+
         # Check per-hour limit
         hour_key = f"rate_limit:hour:{client_id}"
         hour_count = await redis.incr(hour_key)
         if hour_count == 1:
             await redis.expire(hour_key, 3600)
-        
+
         if hour_count > settings.RATE_LIMIT_PER_HOUR:
             return False
-        
+
         return True
 ```
 
@@ -785,7 +785,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import uuid4
 from sqlalchemy import (
-    Column, String, Boolean, DateTime, ForeignKey, 
+    Column, String, Boolean, DateTime, ForeignKey,
     Text, Integer, JSON, ARRAY, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -797,7 +797,7 @@ from app.models.database.base import Base
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
@@ -806,7 +806,7 @@ class User(Base):
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     projects: Mapped[List["Project"]] = relationship("Project", back_populates="owner", cascade="all, delete-orphan")
 
@@ -816,7 +816,7 @@ class Project(Base):
     __table_args__ = (
         UniqueConstraint('owner_id', 'name', name='unique_project_name_per_user'),
     )
-    
+
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
@@ -828,7 +828,7 @@ class Project(Base):
     tags: Mapped[List[str]] = mapped_column(ARRAY(Text), default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     owner: Mapped["User"] = relationship("User", back_populates="projects")
     context_entries: Mapped[List["ContextEntry"]] = relationship("ContextEntry", back_populates="project", cascade="all, delete-orphan")
@@ -836,7 +836,7 @@ class Project(Base):
 
 class ContextEntry(Base):
     __tablename__ = "context_entries"
-    
+
     id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     project_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -852,7 +852,7 @@ class ContextEntry(Base):
     embedding: Mapped[Optional[List[float]]] = mapped_column(Vector(1536))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="context_entries")
 ```
@@ -926,9 +926,9 @@ from app.core.logging import logger
 
 class VectorService:
     """Service for managing vector storage with Qdrant."""
-    
+
     _client: Optional[QdrantClient] = None
-    
+
     @classmethod
     async def initialize(cls):
         """Initialize Qdrant client and create collection if needed."""
@@ -938,7 +938,7 @@ class VectorService:
             api_key=settings.QDRANT_API_KEY,
             timeout=30
         )
-        
+
         # Create collection if it doesn't exist
         collections = await cls._client.get_collections()
         if settings.QDRANT_COLLECTION_NAME not in [c.name for c in collections.collections]:
@@ -950,7 +950,7 @@ class VectorService:
                 ),
                 on_disk_payload=True  # Store payload on disk for large contexts
             )
-            
+
             # Create payload indexes for efficient filtering
             await cls._client.create_payload_index(
                 collection_name=settings.QDRANT_COLLECTION_NAME,
@@ -962,15 +962,15 @@ class VectorService:
                 field_name="content_type",
                 field_schema="keyword"
             )
-            
+
             logger.info(f"Created Qdrant collection: {settings.QDRANT_COLLECTION_NAME}")
-    
+
     @classmethod
     async def close(cls):
         """Close Qdrant client connection."""
         if cls._client:
             await cls._client.close()
-    
+
     @classmethod
     async def upsert_embeddings(
         cls,
@@ -978,7 +978,7 @@ class VectorService:
     ) -> None:
         """
         Upsert embeddings to Qdrant.
-        
+
         Args:
             embeddings: List of dicts with keys:
                 - id: UUID
@@ -993,12 +993,12 @@ class VectorService:
             )
             for emb in embeddings
         ]
-        
+
         await cls._client.upsert(
             collection_name=settings.QDRANT_COLLECTION_NAME,
             points=points
         )
-    
+
     @classmethod
     async def search(
         cls,
@@ -1010,20 +1010,20 @@ class VectorService:
     ) -> List[Dict[str, Any]]:
         """
         Search for similar vectors.
-        
+
         Args:
             query_vector: Query embedding vector
             project_id: Filter by project ID
             content_types: Filter by content types
             limit: Maximum number of results
             score_threshold: Minimum similarity score
-        
+
         Returns:
             List of search results with scores and payloads
         """
         # Build filter conditions
         filter_conditions = []
-        
+
         if project_id:
             filter_conditions.append(
                 FieldCondition(
@@ -1031,7 +1031,7 @@ class VectorService:
                     match=MatchValue(value=str(project_id))
                 )
             )
-        
+
         if content_types:
             filter_conditions.append(
                 FieldCondition(
@@ -1039,7 +1039,7 @@ class VectorService:
                     match=MatchValue(any=content_types)
                 )
             )
-        
+
         # Perform search
         search_result = await cls._client.search(
             collection_name=settings.QDRANT_COLLECTION_NAME,
@@ -1049,7 +1049,7 @@ class VectorService:
             score_threshold=score_threshold,
             with_payload=True
         )
-        
+
         return [
             {
                 "id": result.id,
@@ -1074,11 +1074,11 @@ from app.core.logging import logger
 
 class RedisCache:
     """Redis cache manager with connection pooling."""
-    
+
     def __init__(self):
         self._pool: Optional[ConnectionPool] = None
         self._client: Optional[Redis] = None
-    
+
     async def initialize(self):
         """Initialize Redis connection pool."""
         self._pool = ConnectionPool.from_url(
@@ -1087,24 +1087,24 @@ class RedisCache:
             decode_responses=True
         )
         self._client = Redis(connection_pool=self._pool)
-        
+
         # Test connection
         await self._client.ping()
         logger.info("Redis connection established")
-    
+
     async def close(self):
         """Close Redis connections."""
         if self._client:
             await self._client.close()
         if self._pool:
             await self._pool.disconnect()
-    
+
     def get_client(self) -> Redis:
         """Get Redis client instance."""
         if not self._client:
             raise RuntimeError("Redis client not initialized")
         return self._client
-    
+
     async def get(self, key: str) -> Optional[Any]:
         """Get value from cache."""
         try:
@@ -1115,7 +1115,7 @@ class RedisCache:
         except Exception as e:
             logger.error(f"Redis get error: {e}")
             return None
-    
+
     async def set(
         self,
         key: str,
@@ -1133,7 +1133,7 @@ class RedisCache:
         except Exception as e:
             logger.error(f"Redis set error: {e}")
             return False
-    
+
     async def delete(self, key: Union[str, List[str]]) -> int:
         """Delete key(s) from cache."""
         try:
@@ -1143,7 +1143,7 @@ class RedisCache:
         except Exception as e:
             logger.error(f"Redis delete error: {e}")
             return 0
-    
+
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache."""
         try:
@@ -1151,7 +1151,7 @@ class RedisCache:
         except Exception as e:
             logger.error(f"Redis exists error: {e}")
             return False
-    
+
     def cache_key(self, prefix: str, *args) -> str:
         """Generate cache key with prefix."""
         parts = [prefix] + [str(arg) for arg in args]
@@ -1176,16 +1176,16 @@ def cache_result(prefix: str, ttl: int = 3600):
             cache_data = f"{func.__name__}:{args}:{kwargs}"
             cache_hash = hashlib.md5(cache_data.encode()).hexdigest()
             cache_key = redis_client.cache_key(prefix, cache_hash)
-            
+
             # Try to get from cache
             cached = await redis_client.get(cache_key)
             if cached is not None:
                 return cached
-            
+
             # Execute function and cache result
             result = await func(*args, **kwargs)
             await redis_client.set(cache_key, result, ttl)
-            
+
             return result
         return wrapper
     return decorator
@@ -1203,17 +1203,17 @@ graph TD
     B -->|Python| C[Python Parser]
     B -->|JavaScript| D[JavaScript Parser]
     B -->|TypeScript| E[TypeScript Parser]
-    
+
     C --> F[AST Generation]
     D --> F
     E --> F
-    
+
     F --> G[Content Extraction]
     G --> H[Chunking Strategy]
     H --> I[Embedding Generation]
     I --> J[Vector Storage]
     I --> K[Metadata Storage]
-    
+
     J --> L[Qdrant]
     K --> M[PostgreSQL]
 ```
@@ -1243,13 +1243,13 @@ class PythonFunction:
 
 class PythonParser(BaseParser):
     """Parser for Python source code using AST."""
-    
+
     def parse(self, content: str, file_path: str) -> List[ParsedContent]:
         """Parse Python source code and extract meaningful chunks."""
         try:
             tree = ast.parse(content)
             parsed_contents = []
-            
+
             # Extract module-level docstring
             module_docstring = ast.get_docstring(tree)
             if module_docstring:
@@ -1262,20 +1262,20 @@ class PythonParser(BaseParser):
                     end_line=self._get_docstring_end_line(content, module_docstring),
                     metadata={"type": "docstring"}
                 ))
-            
+
             # Process all nodes
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef):
                     parsed_contents.append(self._parse_function(node, content, file_path))
                 elif isinstance(node, ast.ClassDef):
                     parsed_contents.append(self._parse_class(node, content, file_path))
-            
+
             return parsed_contents
-            
+
         except SyntaxError as e:
             self.logger.error(f"Syntax error in {file_path}: {e}")
             return []
-    
+
     def _parse_function(self, node: ast.FunctionDef, source: str, file_path: str) -> ParsedContent:
         """Parse a function definition."""
         # Extract function details
@@ -1284,10 +1284,10 @@ class PythonParser(BaseParser):
         returns = self._extract_return_type(node)
         decorators = self._extract_decorators(node)
         complexity = self._calculate_complexity(node)
-        
+
         # Get function source code
         function_source = ast.get_source_segment(source, node)
-        
+
         return ParsedContent(
             content_type="function",
             content_name=node.name,
@@ -1304,12 +1304,12 @@ class PythonParser(BaseParser):
                 "is_async": isinstance(node, ast.AsyncFunctionDef)
             }
         )
-    
+
     def _parse_class(self, node: ast.ClassDef, source: str, file_path: str) -> ParsedContent:
         """Parse a class definition."""
         docstring = ast.get_docstring(node)
         methods = []
-        
+
         for item in node.body:
             if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 methods.append({
@@ -1317,9 +1317,9 @@ class PythonParser(BaseParser):
                     "is_async": isinstance(item, ast.AsyncFunctionDef),
                     "decorators": self._extract_decorators(item)
                 })
-        
+
         class_source = ast.get_source_segment(source, node)
-        
+
         return ParsedContent(
             content_type="class",
             content_name=node.name,
@@ -1334,7 +1334,7 @@ class PythonParser(BaseParser):
                 "decorators": self._extract_decorators(node)
             }
         )
-    
+
     def _extract_parameters(self, node: ast.FunctionDef) -> List[Dict[str, Any]]:
         """Extract function parameters with types if available."""
         params = []
@@ -1344,11 +1344,11 @@ class PythonParser(BaseParser):
                 param["type"] = ast.unparse(arg.annotation)
             params.append(param)
         return params
-    
+
     def _calculate_complexity(self, node: ast.AST) -> int:
         """Calculate cyclomatic complexity of a function."""
         complexity = 1  # Base complexity
-        
+
         for child in ast.walk(node):
             if isinstance(child, (ast.If, ast.While, ast.For)):
                 complexity += 1
@@ -1358,7 +1358,7 @@ class PythonParser(BaseParser):
                 complexity += 1
             elif isinstance(child, ast.comprehension):
                 complexity += 1
-        
+
         return complexity
 ```
 
@@ -1373,7 +1373,7 @@ from app.processing.parsers.base import ParsedContent
 
 class ASTChunker(BaseChunker):
     """Intelligent chunking based on AST analysis."""
-    
+
     def __init__(
         self,
         max_chunk_size: int = 2000,
@@ -1383,17 +1383,17 @@ class ASTChunker(BaseChunker):
         self.max_chunk_size = max_chunk_size
         self.overlap_size = overlap_size
         self.min_chunk_size = min_chunk_size
-    
+
     def chunk(self, parsed_contents: List[ParsedContent]) -> List[Chunk]:
         """Create chunks from parsed content."""
         chunks = []
-        
+
         for content in parsed_contents:
             # Small content doesn't need chunking
             if len(content.content) <= self.max_chunk_size:
                 chunks.append(self._create_chunk(content))
                 continue
-            
+
             # Large content needs intelligent chunking
             if content.content_type == "class":
                 chunks.extend(self._chunk_class(content))
@@ -1401,31 +1401,31 @@ class ASTChunker(BaseChunker):
                 chunks.extend(self._chunk_function(content))
             else:
                 chunks.extend(self._chunk_generic(content))
-        
+
         return chunks
-    
+
     def _chunk_class(self, content: ParsedContent) -> List[Chunk]:
         """Chunk a large class intelligently."""
         chunks = []
-        
+
         # Extract class definition and docstring as first chunk
         lines = content.content.split('\n')
         class_header = []
         in_docstring = False
         docstring_complete = False
-        
+
         for i, line in enumerate(lines):
             class_header.append(line)
-            
+
             if '"""' in line or "'''" in line:
                 if not in_docstring:
                     in_docstring = True
                 else:
                     docstring_complete = True
-            
+
             if docstring_complete and line.strip() == "":
                 break
-        
+
         # Create header chunk
         header_content = '\n'.join(class_header)
         chunks.append(Chunk(
@@ -1439,7 +1439,7 @@ class ASTChunker(BaseChunker):
             start_line=content.start_line,
             end_line=content.start_line + len(class_header)
         ))
-        
+
         # Chunk methods separately
         # This would require re-parsing the class body
         # For now, chunk the remaining content
@@ -1454,9 +1454,9 @@ class ASTChunker(BaseChunker):
                     "parent_name": content.content_name
                 }
             ))
-        
+
         return chunks
-    
+
     def _chunk_by_size(
         self,
         content: str,
@@ -1466,13 +1466,13 @@ class ASTChunker(BaseChunker):
         """Chunk content by size with overlap."""
         chunks = []
         lines = content.split('\n')
-        
+
         current_chunk = []
         current_size = 0
-        
+
         for line in lines:
             line_size = len(line) + 1  # +1 for newline
-            
+
             if current_size + line_size > self.max_chunk_size and current_chunk:
                 # Create chunk
                 chunk_content = '\n'.join(current_chunk)
@@ -1484,7 +1484,7 @@ class ASTChunker(BaseChunker):
                         "chunk_index": len(chunks)
                     }
                 ))
-                
+
                 # Keep overlap
                 overlap_lines = []
                 overlap_size = 0
@@ -1495,13 +1495,13 @@ class ASTChunker(BaseChunker):
                         overlap_size += line_len
                     else:
                         break
-                
+
                 current_chunk = overlap_lines
                 current_size = overlap_size
-            
+
             current_chunk.append(line)
             current_size += line_size
-        
+
         # Add final chunk
         if current_chunk:
             chunk_content = '\n'.join(current_chunk)
@@ -1513,7 +1513,7 @@ class ASTChunker(BaseChunker):
                     "chunk_index": len(chunks)
                 }
             ))
-        
+
         return chunks
 ```
 
@@ -1532,13 +1532,13 @@ from app.core.logging import logger
 
 class OpenAIEmbedder(BaseEmbedder):
     """Generate embeddings using OpenAI's API."""
-    
+
     def __init__(self):
         self.client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         self.model = settings.OPENAI_MODEL
         self.dimension = settings.OPENAI_EMBEDDING_DIMENSION
         self.batch_size = 100  # OpenAI's limit
-    
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10)
@@ -1555,25 +1555,25 @@ class OpenAIEmbedder(BaseEmbedder):
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
             raise
-    
+
     async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple texts with batching."""
         all_embeddings = []
-        
+
         # Process in batches
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
-            
+
             try:
                 response = await self.client.embeddings.create(
                     model=self.model,
                     input=batch,
                     encoding_format="float"
                 )
-                
+
                 embeddings = [item.embedding for item in response.data]
                 all_embeddings.extend(embeddings)
-                
+
             except Exception as e:
                 logger.error(f"Error generating batch embeddings: {e}")
                 # Generate individually as fallback
@@ -1585,32 +1585,32 @@ class OpenAIEmbedder(BaseEmbedder):
                         logger.error(f"Failed to generate embedding for text: {e}")
                         # Use zero vector as fallback
                         all_embeddings.append([0.0] * self.dimension)
-        
+
         return all_embeddings
-    
+
     async def generate_embeddings_with_metadata(
         self,
         items: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
         Generate embeddings for items with metadata.
-        
+
         Args:
             items: List of dicts with 'text' and 'metadata' keys
-        
+
         Returns:
             List of dicts with 'embedding' and 'metadata' keys
         """
         texts = [item['text'] for item in items]
         embeddings = await self.generate_embeddings(texts)
-        
+
         results = []
         for item, embedding in zip(items, embeddings):
             results.append({
                 'embedding': embedding,
                 'metadata': item['metadata']
             })
-        
+
         return results
 ```
 
@@ -1631,12 +1631,12 @@ from app.core.logging import logger
 
 class ContextService:
     """Service for managing context processing and storage."""
-    
+
     def __init__(self, db: AsyncSession):
         self.db = db
         self.context_repo = ContextRepository(db)
         self.pipeline = ProcessingPipeline()
-    
+
     async def process_files(
         self,
         project_id: UUID,
@@ -1644,21 +1644,21 @@ class ContextService:
     ) -> Dict[str, Any]:
         """
         Process multiple files and store contexts.
-        
+
         Args:
             project_id: Project ID
             files: List of file data with 'path' and 'content'
-        
+
         Returns:
             Processing summary
         """
         total_contexts = 0
         processed_files = 0
         errors = []
-        
+
         # Process files concurrently with controlled parallelism
         semaphore = asyncio.Semaphore(settings.MAX_WORKERS)
-        
+
         async def process_file(file_data: Dict[str, Any]):
             async with semaphore:
                 try:
@@ -1671,11 +1671,11 @@ class ContextService:
                 except Exception as e:
                     logger.error(f"Error processing {file_data['path']}: {e}")
                     return 0, str(e)
-        
+
         # Process all files
         tasks = [process_file(f) for f in files]
         results = await asyncio.gather(*tasks)
-        
+
         # Aggregate results
         for count, error in results:
             if error:
@@ -1683,13 +1683,13 @@ class ContextService:
             else:
                 total_contexts += count
                 processed_files += 1
-        
+
         return {
             "processed_files": processed_files,
             "total_contexts": total_contexts,
             "errors": errors
         }
-    
+
     async def _process_single_file(
         self,
         project_id: UUID,
@@ -1699,14 +1699,14 @@ class ContextService:
         """Process a single file and store contexts."""
         # Parse and chunk the file
         chunks = await self.pipeline.process(content, file_path)
-        
+
         if not chunks:
             return []
-        
+
         # Prepare contexts for storage
         contexts_data = []
         texts_for_embedding = []
-        
+
         for chunk in chunks:
             context_data = {
                 "project_id": project_id,
@@ -1722,23 +1722,23 @@ class ContextService:
                 "complexity_metrics": chunk.metadata.get("complexity", {})
             }
             contexts_data.append(context_data)
-            
+
             # Prepare text for embedding
             embedding_text = self._prepare_embedding_text(context_data)
             texts_for_embedding.append(embedding_text)
-        
+
         # Generate embeddings in batch
         embeddings = await self.pipeline.embedder.generate_embeddings(texts_for_embedding)
-        
+
         # Store contexts with embeddings
         context_ids = []
         vector_points = []
-        
+
         for context_data, embedding in zip(contexts_data, embeddings):
             # Store in PostgreSQL
             context = await self.context_repo.create(context_data)
             context_ids.append(context.id)
-            
+
             # Prepare for vector storage
             vector_points.append({
                 "id": context.id,
@@ -1752,32 +1752,32 @@ class ContextService:
                     "preview": context.content[:200]  # Store preview for quick access
                 }
             })
-        
+
         # Store embeddings in Qdrant
         await VectorService.upsert_embeddings(vector_points)
-        
+
         return context_ids
-    
+
     def _prepare_embedding_text(self, context_data: Dict[str, Any]) -> str:
         """Prepare text for embedding generation."""
         parts = []
-        
+
         # Add content type and name
         if context_data.get("content_name"):
             parts.append(f"{context_data['content_type']}: {context_data['content_name']}")
         else:
             parts.append(f"{context_data['content_type']}")
-        
+
         # Add file path context
         parts.append(f"File: {context_data['file_path']}")
-        
+
         # Add main content
         parts.append(context_data['content'])
-        
+
         # Add important metadata
         if context_data.get("ast_metadata", {}).get("docstring"):
             parts.append(f"Documentation: {context_data['ast_metadata']['docstring']}")
-        
+
         return "\n\n".join(parts)
 ```
 
@@ -1801,7 +1801,7 @@ T = TypeVar('T')
 
 class AsyncBatcher:
     """Batch async operations for improved performance."""
-    
+
     def __init__(
         self,
         batch_size: int = 100,
@@ -1813,38 +1813,38 @@ class AsyncBatcher:
         self._results: Dict[int, Any] = {}
         self._lock = asyncio.Lock()
         self._process_task: Optional[asyncio.Task] = None
-    
+
     async def add(self, item: Any) -> Any:
         """Add item to batch and get result when processed."""
         async with self._lock:
             item_id = len(self._queue)
             self._queue.append((item_id, item))
-            
+
             # Start processing if not already running
             if self._process_task is None or self._process_task.done():
                 self._process_task = asyncio.create_task(self._process_batch())
-        
+
         # Wait for result
         while item_id not in self._results:
             await asyncio.sleep(0.01)
-        
+
         return self._results.pop(item_id)
-    
+
     async def _process_batch(self):
         """Process accumulated batch."""
         await asyncio.sleep(self.timeout)
-        
+
         async with self._lock:
             if not self._queue:
                 return
-            
+
             # Extract batch
             batch = self._queue[:self.batch_size]
             self._queue = self._queue[self.batch_size:]
-            
+
         # Process batch (override in subclass)
         results = await self._process_items([item for _, item in batch])
-        
+
         # Store results
         for (item_id, _), result in zip(batch, results):
             self._results[item_id] = result
@@ -1870,11 +1870,11 @@ async def gather_with_concurrency(
 ) -> List[T]:
     """Gather results with limited concurrency."""
     semaphore = asyncio.Semaphore(n)
-    
+
     async def sem_coro(coro):
         async with semaphore:
             return await coro
-    
+
     return await asyncio.gather(*(sem_coro(c) for c in coros))
 
 
@@ -1890,23 +1890,23 @@ def async_retry(
         async def wrapper(*args, **kwargs):
             attempt = 1
             current_delay = delay
-            
+
             while attempt <= max_attempts:
                 try:
                     return await func(*args, **kwargs)
                 except exceptions as e:
                     if attempt == max_attempts:
                         raise
-                    
+
                     logger.warning(
                         f"Attempt {attempt} failed: {e}. "
                         f"Retrying in {current_delay}s..."
                     )
-                    
+
                     await asyncio.sleep(current_delay)
                     current_delay *= backoff
                     attempt += 1
-            
+
         return wrapper
     return decorator
 
@@ -1947,10 +1947,10 @@ class TaskStatus(Enum):
 
 class TaskManager:
     """Manage background tasks with status tracking."""
-    
+
     def __init__(self):
         self._tasks: Dict[str, asyncio.Task] = {}
-    
+
     async def create_task(
         self,
         func: Callable,
@@ -1960,18 +1960,18 @@ class TaskManager:
     ) -> str:
         """Create and track a background task."""
         task_id = task_id or str(uuid4())
-        
+
         # Store initial status
         await self._update_status(task_id, TaskStatus.PENDING)
-        
+
         # Create task
         task = asyncio.create_task(
             self._run_task(task_id, func, *args, **kwargs)
         )
         self._tasks[task_id] = task
-        
+
         return task_id
-    
+
     async def _run_task(
         self,
         task_id: str,
@@ -1982,16 +1982,16 @@ class TaskManager:
         """Run task with status updates."""
         try:
             await self._update_status(task_id, TaskStatus.RUNNING)
-            
+
             # Execute function
             result = await func(*args, **kwargs)
-            
+
             await self._update_status(
                 task_id,
                 TaskStatus.COMPLETED,
                 result=result
             )
-            
+
         except Exception as e:
             logger.error(f"Task {task_id} failed: {e}")
             await self._update_status(
@@ -2003,7 +2003,7 @@ class TaskManager:
         finally:
             # Clean up
             self._tasks.pop(task_id, None)
-    
+
     async def _update_status(
         self,
         task_id: str,
@@ -2016,15 +2016,15 @@ class TaskManager:
             "updated_at": datetime.utcnow().isoformat(),
             **extra_data
         }
-        
+
         key = redis_client.cache_key("task", task_id)
         await redis_client.set(key, status_data, ttl=86400)  # 24 hours
-    
+
     async def get_status(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Get task status."""
         key = redis_client.cache_key("task", task_id)
         return await redis_client.get(key)
-    
+
     async def cancel_task(self, task_id: str) -> bool:
         """Cancel a running task."""
         task = self._tasks.get(task_id)
@@ -2048,10 +2048,10 @@ def create_background_task(
 ) -> str:
     """Create a tracked background task."""
     task_id = str(uuid4())
-    
+
     async def wrapped_task():
         await task_manager.create_task(func, *args, task_id=task_id, **kwargs)
-    
+
     background_tasks.add_task(wrapped_task)
     return task_id
 ```
@@ -2069,7 +2069,7 @@ from app.core.logging import logger
 
 class BatchProcessor:
     """Process requests in batches for improved performance."""
-    
+
     def __init__(
         self,
         process_func: Callable[[List[Any]], List[Any]],
@@ -2081,83 +2081,83 @@ class BatchProcessor:
         self.batch_size = batch_size
         self.batch_timeout = batch_timeout
         self.max_wait_time = max_wait_time
-        
+
         self._queue: List[Dict[str, Any]] = []
         self._lock = asyncio.Lock()
         self._process_task: Optional[asyncio.Task] = None
         self._shutdown = False
-    
+
     async def add_request(self, request_data: Any) -> Any:
         """Add request to batch and wait for result."""
         if self._shutdown:
             raise RuntimeError("Batch processor is shutting down")
-        
+
         # Create future for result
         future = asyncio.Future()
-        
+
         async with self._lock:
             self._queue.append({
                 "data": request_data,
                 "future": future,
                 "timestamp": datetime.utcnow()
             })
-            
+
             # Start processing if needed
             if self._process_task is None or self._process_task.done():
                 self._process_task = asyncio.create_task(self._process_batch())
-        
+
         # Wait for result
         return await future
-    
+
     async def _process_batch(self):
         """Process accumulated batch."""
         await asyncio.sleep(self.batch_timeout)
-        
+
         async with self._lock:
             if not self._queue:
                 return
-            
+
             # Determine batch to process
             now = datetime.utcnow()
             batch = []
             remaining = []
-            
+
             for item in self._queue:
                 age = (now - item["timestamp"]).total_seconds()
-                
+
                 if len(batch) < self.batch_size and age < self.max_wait_time:
                     batch.append(item)
                 else:
                     remaining.append(item)
-            
+
             self._queue = remaining
-        
+
         if not batch:
             return
-        
+
         # Process batch
         try:
             request_data = [item["data"] for item in batch]
             results = await self.process_func(request_data)
-            
+
             # Deliver results
             for item, result in zip(batch, results):
                 item["future"].set_result(result)
-                
+
         except Exception as e:
             logger.error(f"Batch processing failed: {e}")
             # Deliver errors
             for item in batch:
                 item["future"].set_exception(e)
-    
+
     async def shutdown(self):
         """Shutdown batch processor."""
         self._shutdown = True
-        
+
         # Process remaining items
         if self._queue:
             await self._process_batch()
-        
+
         # Cancel ongoing task
         if self._process_task and not self._process_task.done():
             self._process_task.cancel()
@@ -2166,11 +2166,11 @@ class BatchProcessor:
 # Example usage for embedding generation
 class EmbeddingBatchProcessor(BatchProcessor):
     """Batch processor for embedding generation."""
-    
+
     def __init__(self, embedder):
         async def process_batch(texts: List[str]) -> List[List[float]]:
             return await embedder.generate_embeddings(texts)
-        
+
         super().__init__(
             process_func=process_batch,
             batch_size=100,  # OpenAI limit
@@ -2199,15 +2199,15 @@ def cache_key_builder(
 ) -> Callable:
     """Build cache key from function arguments."""
     exclude_params = exclude_params or []
-    
+
     def key_builder(func_name: str, *args, **kwargs) -> str:
         parts = [prefix, func_name]
-        
+
         if include_args:
             # Skip 'self' or 'cls' for methods
             args_to_include = args[1:] if args and hasattr(args[0], '__class__') else args
             parts.extend(str(arg) for arg in args_to_include)
-        
+
         if include_kwargs:
             filtered_kwargs = {
                 k: v for k, v in kwargs.items()
@@ -2216,9 +2216,9 @@ def cache_key_builder(
             if filtered_kwargs:
                 kwargs_str = json.dumps(filtered_kwargs, sort_keys=True)
                 parts.append(hashlib.md5(kwargs_str.encode()).hexdigest())
-        
+
         return ":".join(parts)
-    
+
     return key_builder
 
 
@@ -2230,7 +2230,7 @@ def cached(
 ):
     """
     Decorator for caching function results.
-    
+
     Args:
         prefix: Cache key prefix
         ttl: Time to live in seconds
@@ -2239,17 +2239,17 @@ def cached(
     """
     if key_builder is None:
         key_builder = cache_key_builder(prefix)
-    
+
     def decorator(func):
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
             # Check if caching is applicable
             if condition and not condition(*args, **kwargs):
                 return await func(*args, **kwargs)
-            
+
             # Build cache key
             cache_key = key_builder(func.__name__, *args, **kwargs)
-            
+
             # Try to get from cache
             try:
                 cached_result = await redis_client.get(cache_key)
@@ -2258,10 +2258,10 @@ def cached(
                     return cached_result
             except Exception as e:
                 logger.warning(f"Cache get error: {e}")
-            
+
             # Execute function
             result = await func(*args, **kwargs)
-            
+
             # Cache result
             try:
                 if result is not None:
@@ -2269,21 +2269,21 @@ def cached(
                     logger.debug(f"Cached result: {cache_key}")
             except Exception as e:
                 logger.warning(f"Cache set error: {e}")
-            
+
             return result
-        
+
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
             # For sync functions, we can't use async cache
             # Just execute the function
             return func(*args, **kwargs)
-        
+
         # Return appropriate wrapper
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         else:
             return sync_wrapper
-    
+
     return decorator
 
 
@@ -2293,7 +2293,7 @@ def invalidate_cache(pattern: str):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             result = await func(*args, **kwargs)
-            
+
             # Invalidate cache
             try:
                 keys = await redis_client.get_client().keys(pattern)
@@ -2302,7 +2302,7 @@ def invalidate_cache(pattern: str):
                     logger.debug(f"Invalidated {len(keys)} cache entries")
             except Exception as e:
                 logger.warning(f"Cache invalidation error: {e}")
-            
+
             return result
         return wrapper
     return decorator
@@ -2314,7 +2314,7 @@ class ProjectService:
     async def get_project(self, project_id: UUID) -> Project:
         # This will be cached for 1 hour
         return await self.repo.get(project_id)
-    
+
     @invalidate_cache("project:*")
     async def update_project(self, project_id: UUID, data: ProjectUpdate) -> Project:
         # This will invalidate all project cache entries
@@ -2339,14 +2339,14 @@ from app.core.logging import logger
 
 class ConnectionManager:
     """Centralized connection pool management."""
-    
+
     def __init__(self):
         self._engines: Dict[str, AsyncEngine] = {}
         self._redis_pools: Dict[str, RedisPool] = {}
         self._http_session: Optional[aiohttp.ClientSession] = None
         self._qdrant_clients: Dict[str, QdrantClient] = {}
         self._lock = asyncio.Lock()
-    
+
     async def get_db_engine(
         self,
         database_url: str,
@@ -2367,9 +2367,9 @@ class ConnectionManager:
                     )
                     self._engines[database_url] = engine
                     logger.info(f"Created database engine with pool size {pool_size}")
-        
+
         return self._engines[database_url]
-    
+
     async def get_redis_pool(
         self,
         redis_url: str,
@@ -2392,9 +2392,9 @@ class ConnectionManager:
                     )
                     self._redis_pools[redis_url] = pool
                     logger.info(f"Created Redis pool with {max_connections} connections")
-        
+
         return Redis(connection_pool=self._redis_pools[redis_url])
-    
+
     async def get_http_session(self) -> aiohttp.ClientSession:
         """Get or create HTTP session with connection pooling."""
         if self._http_session is None or self._http_session.closed:
@@ -2406,13 +2406,13 @@ class ConnectionManager:
                         ttl_dns_cache=300,  # DNS cache timeout
                         enable_cleanup_closed=True
                     )
-                    
+
                     timeout = aiohttp.ClientTimeout(
                         total=30,
                         connect=5,
                         sock_read=10
                     )
-                    
+
                     self._http_session = aiohttp.ClientSession(
                         connector=connector,
                         timeout=timeout,
@@ -2421,9 +2421,9 @@ class ConnectionManager:
                         }
                     )
                     logger.info("Created HTTP session with connection pooling")
-        
+
         return self._http_session
-    
+
     async def get_qdrant_client(
         self,
         host: str = settings.QDRANT_HOST,
@@ -2431,7 +2431,7 @@ class ConnectionManager:
     ) -> QdrantClient:
         """Get or create Qdrant client."""
         key = f"{host}:{port}"
-        
+
         if key not in self._qdrant_clients:
             async with self._lock:
                 if key not in self._qdrant_clients:
@@ -2444,30 +2444,30 @@ class ConnectionManager:
                     )
                     self._qdrant_clients[key] = client
                     logger.info(f"Created Qdrant client for {key}")
-        
+
         return self._qdrant_clients[key]
-    
+
     async def close_all(self):
         """Close all connections."""
         # Close database engines
         for engine in self._engines.values():
             await engine.dispose()
         self._engines.clear()
-        
+
         # Close Redis pools
         for pool in self._redis_pools.values():
             await pool.disconnect()
         self._redis_pools.clear()
-        
+
         # Close HTTP session
         if self._http_session and not self._http_session.closed:
             await self._http_session.close()
-        
+
         # Close Qdrant clients
         for client in self._qdrant_clients.values():
             client.close()
         self._qdrant_clients.clear()
-        
+
         logger.info("Closed all connection pools")
 
 
@@ -2542,16 +2542,16 @@ def create_access_token(
         expire = datetime.utcnow() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    
+
     to_encode = {
         "exp": expire,
         "sub": str(subject),
         "type": "access"
     }
-    
+
     if additional_claims:
         to_encode.update(additional_claims)
-    
+
     encoded_jwt = jwt.encode(
         to_encode,
         settings.SECRET_KEY,
@@ -2582,10 +2582,10 @@ def generate_api_key() -> tuple[str, str]:
     """Generate API key and its hash."""
     # Generate a secure random API key
     api_key = f"mbx_{secrets.token_urlsafe(32)}"
-    
+
     # Hash the API key for storage
     api_key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-    
+
     return api_key, api_key_hash
 
 
@@ -2608,7 +2608,7 @@ from fastapi import status
 
 class InputValidator:
     """Centralized input validation utilities."""
-    
+
     # Regex patterns
     FILE_PATH_PATTERN = re.compile(r'^[\w\-./]+$')
     URL_PATTERN = re.compile(
@@ -2619,7 +2619,7 @@ class InputValidator:
         r'(?::\d+)?'
         r'(?:/?|[/?]\S+)$', re.IGNORECASE
     )
-    
+
     # File validation
     ALLOWED_EXTENSIONS = {
         'python': ['.py', '.pyi'],
@@ -2629,19 +2629,19 @@ class InputValidator:
         'json': ['.json'],
         'yaml': ['.yml', '.yaml']
     }
-    
+
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-    
+
     @classmethod
     def validate_file_path(cls, file_path: str) -> str:
         """Validate and sanitize file path."""
         # Remove any null bytes
         file_path = file_path.replace('\x00', '')
-        
+
         # Normalize path
         path = Path(file_path)
         normalized = path.as_posix()
-        
+
         # Check for path traversal
         if '..' in normalized or normalized.startswith('/'):
             raise APIException(
@@ -2649,7 +2649,7 @@ class InputValidator:
                 detail="Invalid file path",
                 error_code="INVALID_FILE_PATH"
             )
-        
+
         # Check pattern
         if not cls.FILE_PATH_PATTERN.match(normalized):
             raise APIException(
@@ -2657,9 +2657,9 @@ class InputValidator:
                 detail="File path contains invalid characters",
                 error_code="INVALID_FILE_PATH"
             )
-        
+
         return normalized
-    
+
     @classmethod
     def validate_file_content(
         cls,
@@ -2674,10 +2674,10 @@ class InputValidator:
                 detail=f"File size exceeds maximum of {cls.MAX_FILE_SIZE} bytes",
                 error_code="FILE_TOO_LARGE"
             )
-        
+
         # Detect file type
         file_type = magic.from_buffer(content, mime=True)
-        
+
         # Validate against expected type
         if expected_type:
             allowed_types = {
@@ -2687,22 +2687,22 @@ class InputValidator:
                 'json': ['application/json', 'text/plain'],
                 'yaml': ['application/x-yaml', 'text/yaml', 'text/plain']
             }
-            
+
             if file_type not in allowed_types.get(expected_type, []):
                 raise APIException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"File type mismatch. Expected {expected_type}, got {file_type}",
                     error_code="FILE_TYPE_MISMATCH"
                 )
-        
+
         return file_type
-    
+
     @classmethod
     def validate_url(cls, url: str) -> str:
         """Validate and sanitize URL."""
         # Remove whitespace
         url = url.strip()
-        
+
         # Check pattern
         if not cls.URL_PATTERN.match(url):
             raise APIException(
@@ -2710,33 +2710,33 @@ class InputValidator:
                 detail="Invalid URL format",
                 error_code="INVALID_URL"
             )
-        
+
         # Additional checks for security
         blocked_hosts = ['localhost', '127.0.0.1', '0.0.0.0']
         parsed = urlparse(url)
-        
+
         if parsed.hostname in blocked_hosts:
             raise APIException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="URL points to blocked host",
                 error_code="BLOCKED_HOST"
             )
-        
+
         return url
-    
+
     @classmethod
     def sanitize_user_input(cls, text: str, max_length: int = 10000) -> str:
         """Sanitize user input text."""
         # Remove null bytes
         text = text.replace('\x00', '')
-        
+
         # Limit length
         if len(text) > max_length:
             text = text[:max_length]
-        
+
         # Remove control characters (except newlines and tabs)
         text = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', text)
-        
+
         return text.strip()
 
 
@@ -2746,20 +2746,20 @@ from pydantic import field_validator
 
 class SecureProjectCreate(ProjectCreate):
     """Project creation with additional validation."""
-    
+
     @field_validator('name')
     @classmethod
     def validate_name(cls, v: str) -> str:
         # Check for SQL injection patterns
         sql_patterns = ['--', '/*', '*/', 'xp_', 'sp_', ';', 'UNION', 'SELECT']
         v_lower = v.lower()
-        
+
         for pattern in sql_patterns:
             if pattern.lower() in v_lower:
                 raise ValueError("Project name contains invalid characters")
-        
+
         return InputValidator.sanitize_user_input(v, max_length=255)
-    
+
     @field_validator('repository_url')
     @classmethod
     def validate_repository_url(cls, v: Optional[str]) -> Optional[str]:
@@ -2781,15 +2781,15 @@ import uuid
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Add request ID for tracing
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Add security headers
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -2797,64 +2797,64 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        
+
         # Remove server header
         response.headers.pop("Server", None)
-        
+
         return response
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Log all requests with security context."""
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Get client info
         client_host = request.client.host if request.client else "unknown"
-        
+
         # Log request
         logger.info(
             f"Request: {request.method} {request.url.path} "
             f"from {client_host} "
             f"(ID: {getattr(request.state, 'request_id', 'unknown')})"
         )
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Log response
         logger.info(
             f"Response: {response.status_code} "
             f"for {request.method} {request.url.path} "
             f"(ID: {getattr(request.state, 'request_id', 'unknown')})"
         )
-        
+
         return response
 
 
 class IPWhitelistMiddleware(BaseHTTPMiddleware):
     """IP whitelist middleware for admin endpoints."""
-    
+
     def __init__(self, app, whitelist: List[str]):
         super().__init__(app)
         self.whitelist = whitelist
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Only check admin endpoints
         if request.url.path.startswith("/admin"):
             client_host = request.client.host if request.client else None
-            
+
             # Get real IP from headers if behind proxy
             forwarded = request.headers.get("X-Forwarded-For")
             if forwarded:
                 client_host = forwarded.split(',')[0].strip()
-            
+
             if client_host not in self.whitelist:
                 logger.warning(f"Blocked admin access from {client_host}")
                 return JSONResponse(
                     status_code=403,
                     content={"detail": "Access denied"}
                 )
-        
+
         return await call_next(request)
 ```
 
@@ -2957,15 +2957,15 @@ async def engine():
         str(settings.DATABASE_URL),
         echo=False
     )
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield engine
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await engine.dispose()
 
 
@@ -2993,7 +2993,7 @@ async def authenticated_client(client: AsyncClient, test_user) -> AsyncClient:
         json={"username": test_user.username, "password": "testpass123"}
     )
     token = response.json()["access_token"]
-    
+
     # Set authorization header
     client.headers["Authorization"] = f"Bearer {token}"
     return client
@@ -3003,7 +3003,7 @@ async def authenticated_client(client: AsyncClient, test_user) -> AsyncClient:
 async def test_user(db_session: AsyncSession):
     """Create test user."""
     from app.models.database.models import User
-    
+
     user = User(
         email="test@example.com",
         username="testuser",
@@ -3013,7 +3013,7 @@ async def test_user(db_session: AsyncSession):
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
-    
+
     return user
 ```
 
@@ -3029,7 +3029,7 @@ from app.models.database.models import Project
 
 class TestProjectAPI:
     """Test project API endpoints."""
-    
+
     async def test_create_project(
         self,
         authenticated_client: AsyncClient,
@@ -3045,13 +3045,13 @@ class TestProjectAPI:
                 "tags": ["test", "demo"]
             }
         )
-        
+
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "Test Project"
         assert data["owner_id"] == str(test_user.id)
         assert "id" in data
-    
+
     async def test_list_projects(
         self,
         authenticated_client: AsyncClient,
@@ -3068,19 +3068,19 @@ class TestProjectAPI:
             )
             db_session.add(project)
         await db_session.commit()
-        
+
         # Test pagination
         response = await authenticated_client.get(
             "/api/v1/projects/?skip=0&limit=3"
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data["items"]) == 3
         assert data["total"] == 5
         assert data["skip"] == 0
         assert data["limit"] == 3
-    
+
     async def test_get_project_not_found(
         self,
         authenticated_client: AsyncClient
@@ -3089,10 +3089,10 @@ class TestProjectAPI:
         response = await authenticated_client.get(
             "/api/v1/projects/00000000-0000-0000-0000-000000000000"
         )
-        
+
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
-    
+
     async def test_update_project(
         self,
         authenticated_client: AsyncClient,
@@ -3109,17 +3109,17 @@ class TestProjectAPI:
         db_session.add(project)
         await db_session.commit()
         await db_session.refresh(project)
-        
+
         # Update project
         response = await authenticated_client.patch(
             f"/api/v1/projects/{project.id}",
             json={"name": "Updated Name"}
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Updated Name"
-    
+
     async def test_delete_project(
         self,
         authenticated_client: AsyncClient,
@@ -3136,14 +3136,14 @@ class TestProjectAPI:
         db_session.add(project)
         await db_session.commit()
         await db_session.refresh(project)
-        
+
         # Delete project
         response = await authenticated_client.delete(
             f"/api/v1/projects/{project.id}"
         )
-        
+
         assert response.status_code == 204
-        
+
         # Verify deletion
         deleted = await db_session.get(Project, project.id)
         assert deleted is None
@@ -3163,7 +3163,7 @@ from statistics import mean, stdev
 
 class TestPerformance:
     """Performance and load tests."""
-    
+
     @pytest.mark.performance
     async def test_concurrent_requests(self, base_url: str, auth_token: str):
         """Test handling of concurrent requests."""
@@ -3175,29 +3175,29 @@ class TestPerformance:
             ) as response:
                 await response.json()
                 return time.time() - start
-        
+
         # Configure test
         num_requests = 100
         max_concurrent = 10
-        
+
         async with aiohttp.ClientSession() as session:
             # Create semaphore for concurrency control
             semaphore = asyncio.Semaphore(max_concurrent)
-            
+
             async def bounded_request(session):
                 async with semaphore:
                     return await make_request(session)
-            
+
             # Execute requests
             tasks = [bounded_request(session) for _ in range(num_requests)]
             response_times = await asyncio.gather(*tasks)
-        
+
         # Analyze results
         avg_time = mean(response_times)
         std_dev = stdev(response_times)
         max_time = max(response_times)
         min_time = min(response_times)
-        
+
         print(f"\nPerformance Results:")
         print(f"  Total requests: {num_requests}")
         print(f"  Concurrent requests: {max_concurrent}")
@@ -3205,11 +3205,11 @@ class TestPerformance:
         print(f"  Standard deviation: {std_dev:.3f}s")
         print(f"  Min response time: {min_time:.3f}s")
         print(f"  Max response time: {max_time:.3f}s")
-        
+
         # Assert performance requirements
         assert avg_time < 0.2  # Average under 200ms
         assert max_time < 1.0  # No request over 1s
-    
+
     @pytest.mark.performance
     async def test_vector_search_performance(
         self,
@@ -3226,26 +3226,26 @@ class TestPerformance:
             }
             for i, embedding in enumerate(sample_embeddings[:1000])
         ])
-        
+
         # Perform searches
         search_times = []
         for i in range(50):
             query_vector = sample_embeddings[i]
-            
+
             start = time.time()
             results = await vector_service.search(
                 query_vector=query_vector,
                 limit=10
             )
             search_times.append(time.time() - start)
-        
+
         # Analyze results
         avg_search_time = mean(search_times)
-        
+
         print(f"\nVector Search Performance:")
         print(f"  Average search time: {avg_search_time:.3f}s")
         print(f"  Searches per second: {1/avg_search_time:.1f}")
-        
+
         # Assert performance requirements
         assert avg_search_time < 0.05  # Under 50ms average
 ```
@@ -3509,18 +3509,18 @@ data:
   # Application settings
   PROJECT_NAME: "Mobius Context Engineering Platform"
   API_V1_STR: "/api/v1"
-  
+
   # Performance settings
   DATABASE_POOL_SIZE: "20"
   DATABASE_MAX_OVERFLOW: "40"
   REDIS_POOL_SIZE: "10"
   BATCH_SIZE: "100"
   MAX_WORKERS: "4"
-  
+
   # Rate limiting
   RATE_LIMIT_PER_MINUTE: "60"
   RATE_LIMIT_PER_HOUR: "1000"
-  
+
   # OpenAI settings
   OPENAI_MODEL: "text-embedding-3-small"
   OPENAI_EMBEDDING_DIMENSION: "1536"

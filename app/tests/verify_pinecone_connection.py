@@ -17,34 +17,36 @@ def verify_pinecone_connection():
         print("❌ PINECONE_API_KEY environment variable not set!")
         print("   Set it with: export PINECONE_API_KEY='your-api-key-here'")
         return False
-    
+
     print("✓ PINECONE_API_KEY found")
-    
+
     try:
         # Initialize client
         pc = Pinecone(api_key=api_key)
         print("✓ Pinecone client initialized")
-        
+
         # List indexes
         indexes = pc.list_indexes()
-        print(f"✓ Successfully connected to Pinecone")
+        print("✓ Successfully connected to Pinecone")
         print(f"  Found {len(indexes)} existing indexes")
-        
+
         # Show existing indexes
         if indexes:
             print("  Existing indexes:")
             for idx in indexes:
-                print(f"    - {idx.name} (dimension: {idx.dimension}, metric: {idx.metric})")
-        
+                print(
+                    f"    - {idx.name} (dimension: {idx.dimension}, metric: {idx.metric})"
+                )
+
         # Check if test index exists
         test_index_name = "mobius-test-index"
         if test_index_name in [idx.name for idx in indexes]:
             print(f"\n⚠️  Warning: Test index '{test_index_name}' already exists.")
             print("   The test suite will attempt to delete and recreate it.")
-        
+
         print("\n✅ Pinecone connection verified! You can run the tests now.")
         return True
-        
+
     except Exception as e:
         print(f"\n❌ Failed to connect to Pinecone: {str(e)}")
         print("\nPossible issues:")

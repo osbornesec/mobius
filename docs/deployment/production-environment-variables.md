@@ -5,12 +5,43 @@ production deployment using `docker-compose.prod.yml`.
 
 ## Required Production Variables
 
+### Application Security
+
+**Variable:** `MOBIUS_SECRET_KEY`
+**Required:** Yes
+**Purpose:** JWT signing and session encryption
+**Example Generation:** `openssl rand -base64 32`
+**Security:** Never use default/development keys in production
+
+```bash
+# Generate a secure secret key
+openssl rand -base64 32
+```
+
+**Variable:** `MOBIUS_ALLOWED_ORIGINS`
+**Required:** Yes
+**Purpose:** CORS allowed origins (JSON array format)
+**Example:** `'["https://app.mobius.ai", "https://mobius.ai"]'`
+**Security:** Only include your production domains
+
+### Database Configuration
+
+**Variable:** `POSTGRES_USER`
+**Required:** Yes
+**Purpose:** PostgreSQL database username
+**Security:** Avoid using 'postgres' as username
+
+**Variable:** `POSTGRES_PASSWORD`
+**Required:** Yes
+**Purpose:** PostgreSQL database password
+**Example Generation:** `openssl rand -base64 32`
+
 ### Redis Authentication
 
-**Variable:** `REDIS_PASSWORD`  
-**Required:** Yes (in production)  
-**Purpose:** Secures Redis cache instance with password authentication  
-**Example Generation:** `openssl rand -base64 32`  
+**Variable:** `REDIS_PASSWORD`
+**Required:** Yes (in production)
+**Purpose:** Secures Redis cache instance with password authentication
+**Example Generation:** `openssl rand -base64 32`
 **Docker Compose Reference:** Line 37 in `docker-compose.prod.yml`
 
 ```bash
@@ -30,10 +61,10 @@ REDIS_PASSWORD=change_me_use_strong_password_in_production
 
 ### Qdrant API Authentication
 
-**Variable:** `QDRANT_API_KEY`  
-**Required:** Yes (in production)  
-**Purpose:** Secures Qdrant vector database API access  
-**Example Generation:** `openssl rand -hex 32`  
+**Variable:** `QDRANT_API_KEY`
+**Required:** Yes (in production)
+**Purpose:** Secures Qdrant vector database API access
+**Example Generation:** `openssl rand -hex 32`
 **Docker Compose Reference:** Line 46 in `docker-compose.prod.yml`
 
 ```bash

@@ -69,7 +69,7 @@ def check_function_documentation(filepath):
     """Check if functions have proper parameter and return documentation."""
     with open(filepath, 'r') as f:
         tree = ast.parse(f.read())
-    
+
     issues = []
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
@@ -79,11 +79,11 @@ def check_function_documentation(filepath):
                 for arg in node.args.args:
                     if arg.arg != 'self' and f':param {arg.arg}:' not in docstring:
                         issues.append(f"Missing param doc for {arg.arg} in {node.name}")
-                
+
                 # Check for return documentation
                 if node.returns and ':return:' not in docstring:
                     issues.append(f"Missing return doc in {node.name}")
-    
+
     return issues
 ```
 
@@ -142,27 +142,27 @@ const { Project } = require('ts-morph');
 function checkTSDocCoverage(srcPath) {
     const project = new Project();
     project.addSourceFilesAtPaths(`${srcPath}/**/*.ts`);
-    
+
     let total = 0;
     let documented = 0;
-    
+
     project.getSourceFiles().forEach(sourceFile => {
         sourceFile.getClasses().forEach(classDecl => {
             total++;
             if (classDecl.getJsDocs().length > 0) documented++;
-            
+
             classDecl.getMethods().forEach(method => {
                 total++;
                 if (method.getJsDocs().length > 0) documented++;
             });
         });
-        
+
         sourceFile.getFunctions().forEach(func => {
             total++;
             if (func.getJsDocs().length > 0) documented++;
         });
     });
-    
+
     return { total, documented, coverage: (documented / total) * 100 };
 }
 ```
@@ -185,30 +185,30 @@ def check_api_documentation(app: FastAPI):
         version=app.version,
         routes=app.routes,
     )
-    
+
     issues = []
-    
+
     for path, methods in openapi_schema["paths"].items():
         for method, details in methods.items():
             # Check for description
             if not details.get("description"):
                 issues.append(f"Missing description: {method.upper()} {path}")
-            
+
             # Check for response documentation
             responses = details.get("responses", {})
             if "200" not in responses and "201" not in responses:
                 issues.append(f"Missing success response doc: {method.upper()} {path}")
-            
+
             # Check for error response documentation
             if "400" not in responses and "422" not in responses:
                 issues.append(f"Missing error response doc: {method.upper()} {path}")
-            
+
             # Check parameters
             if "parameters" in details:
                 for param in details["parameters"]:
                     if not param.get("description"):
                         issues.append(f"Missing param description: {param['name']} in {method.upper()} {path}")
-    
+
     return issues
 ```
 
@@ -243,23 +243,23 @@ def check_schema_documentation(package_name):
     """Check if Pydantic models have proper documentation."""
     package = importlib.import_module(package_name)
     issues = []
-    
+
     for importer, modname, ispkg in pkgutil.walk_packages(
         package.__path__, package.__name__ + "."
     ):
         module = importlib.import_module(modname)
-        
+
         for name, obj in inspect.getmembers(module):
             if inspect.isclass(obj) and issubclass(obj, BaseModel):
                 # Check class docstring
                 if not obj.__doc__:
                     issues.append(f"Missing docstring: {modname}.{name}")
-                
+
                 # Check field descriptions
                 for field_name, field in obj.__fields__.items():
                     if not field.field_info.description:
                         issues.append(f"Missing field description: {modname}.{name}.{field_name}")
-    
+
     return issues
 ```
 
@@ -277,20 +277,20 @@ def check_readme_completeness(readme_path="README.md"):
         "## Contributing",
         "## License"
     ]
-    
+
     optional_sections = [
         "## Architecture",
         "## Development",
         "## Testing",
         "## Deployment"
     ]
-    
+
     with open(readme_path, 'r') as f:
         content = f.read()
-    
+
     missing_required = [s for s in required_sections if s not in content]
     missing_optional = [s for s in optional_sections if s not in content]
-    
+
     return {
         "missing_required": missing_required,
         "missing_optional": missing_optional,
@@ -324,7 +324,7 @@ def check_setup_documentation():
         ("docker-compose.yml", ["services", "volumes", "networks"]),
         (".env.example", ["DATABASE_URL", "API_KEY", "SECRET_KEY"])
     ]
-    
+
     issues = []
     for filepath, required_content in files_to_check:
         if not os.path.exists(filepath):
@@ -335,7 +335,7 @@ def check_setup_documentation():
                 for req in required_content:
                     if req not in content:
                         issues.append(f"Missing in {filepath}: {req}")
-    
+
     return issues
 ```
 
@@ -348,7 +348,7 @@ ADR_DIR="docs/adr"
 if [ -d "$ADR_DIR" ]; then
     echo "Found ADRs:"
     ls -la "$ADR_DIR"/*.md | wc -l
-    
+
     # Check ADR format
     for adr in "$ADR_DIR"/*.md; do
         if ! grep -q "## Status" "$adr"; then
@@ -378,20 +378,20 @@ def check_database_documentation(database_url):
     """Check if database tables and columns are documented."""
     engine = create_engine(database_url)
     inspector = inspect(engine)
-    
+
     undocumented = []
-    
+
     for table_name in inspector.get_table_names():
         # Check for table comment
         table_comment = inspector.get_table_comment(table_name)
         if not table_comment['text']:
             undocumented.append(f"Table {table_name}: No comment")
-        
+
         # Check column comments
         for column in inspector.get_columns(table_name):
             if not column.get('comment'):
                 undocumented.append(f"Column {table_name}.{column['name']}: No comment")
-    
+
     return undocumented
 ```
 
@@ -404,9 +404,9 @@ def check_config_documentation():
         "config/default.json",
         "config/production.json"
     ]
-    
+
     env_vars = set()
-    
+
     # Collect all environment variables from code
     for root, dirs, files in os.walk("app"):
         for file in files:
@@ -417,7 +417,7 @@ def check_config_documentation():
                     import re
                     env_refs = re.findall(r'os\.environ\.get\(["\'](\w+)["\']', content)
                     env_vars.update(env_refs)
-    
+
     # Check if documented
     documented = set()
     if os.path.exists(".env.example"):
@@ -426,7 +426,7 @@ def check_config_documentation():
                 if '=' in line and not line.startswith('#'):
                     var_name = line.split('=')[0].strip()
                     documented.add(var_name)
-    
+
     undocumented = env_vars - documented
     return list(undocumented)
 ```
@@ -476,7 +476,7 @@ def generate_coverage_report():
         "project": "Mobius",
         "coverage": {}
     }
-    
+
     # Python docstring coverage
     try:
         result = subprocess.run(
@@ -489,7 +489,7 @@ def generate_coverage_report():
         report["coverage"]["python_docstrings"] = coverage_percent
     except:
         report["coverage"]["python_docstrings"] = "N/A"
-    
+
     # TypeScript documentation coverage
     try:
         # Run TypeDoc with coverage plugin
@@ -501,7 +501,7 @@ def generate_coverage_report():
                 report["coverage"]["typescript"] = ts_coverage["percent"]
     except:
         report["coverage"]["typescript"] = "N/A"
-    
+
     # API documentation coverage
     api_issues = check_api_documentation_coverage()
     report["coverage"]["api_endpoints"] = {
@@ -509,17 +509,17 @@ def generate_coverage_report():
         "total": api_issues["total"],
         "percent": (api_issues["documented"] / api_issues["total"]) * 100
     }
-    
+
     # Project documentation
     project_docs = check_project_documentation()
     report["coverage"]["project_docs"] = project_docs
-    
+
     # Generate HTML report
     generate_html_report(report)
-    
+
     # Generate markdown report
     generate_markdown_report(report)
-    
+
     return report
 
 def generate_html_report(report):
@@ -543,7 +543,7 @@ def generate_html_report(report):
     <body>
         <h1>Documentation Coverage Report</h1>
         <p>Generated: {report['timestamp']}</p>
-        
+
         <div class="coverage">
             <h2>Coverage Summary</h2>
             <table>
@@ -568,7 +568,7 @@ def generate_html_report(report):
                 </tr>
             </table>
         </div>
-        
+
         <div class="recommendations">
             <h2>Recommendations</h2>
             <ul>
@@ -578,7 +578,7 @@ def generate_html_report(report):
     </body>
     </html>
     """
-    
+
     with open("docs/coverage_report.html", 'w') as f:
         f.write(html)
 
@@ -731,32 +731,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install Python dependencies
         run: |
           pip install interrogate pydocstyle
-      
+
       - name: Check Python documentation
         run: |
           interrogate -v app/ --fail-under 80
           pydocstyle app/ --convention=google
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-      
+
       - name: Install Node dependencies
         run: npm ci
-      
+
       - name: Check TypeScript documentation
         run: npx typedoc --validation.notDocumented
-      
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v3
         with:

@@ -35,27 +35,27 @@ echo "=== BUILD PERFORMANCE ANALYSIS ==="
 if [ -d .git ]; then
     # Analyze recent build times from CI logs
     echo "📊 Build Time Trends (Last 30 days):"
-    
+
     # For GitHub Actions
     if [ -d .github/workflows ]; then
         echo "  Analyzing GitHub Actions build times..."
         # Note: Requires gh CLI to be installed
         if command -v gh &> /dev/null; then
             gh run list --limit 50 --json conclusion,createdAt,updatedAt,name | \
-            jq -r '.[] | 
-                select(.conclusion == "success") | 
+            jq -r '.[] |
+                select(.conclusion == "success") |
                 {
                     workflow: .name,
                     duration: ((.updatedAt | fromdate) - (.createdAt | fromdate)),
                     date: .createdAt
-                } | 
+                } |
                 "\(.date | split("T")[0]) - \(.workflow): \(.duration | floor)s"'
         fi
     fi
-    
+
     # Local build time analysis
     echo -e "\n📈 Local Build Time Analysis:"
-    
+
     # Python/FastAPI build times
     if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
         echo "  Python Build Performance:"
@@ -64,7 +64,7 @@ if [ -d .git ]; then
         time_end=$(date +%s)
         echo "    Dependency resolution time: $((time_end - time_start))s"
     fi
-    
+
     # React/TypeScript build times
     if [ -f "package.json" ]; then
         echo "  Frontend Build Performance:"
@@ -76,7 +76,7 @@ if [ -d .git ]; then
             npm list --depth=0 2>/dev/null | wc -l | xargs echo "    Total dependencies:"
         fi
     fi
-    
+
     # Docker build analysis
     if [ -f "Dockerfile" ]; then
         echo -e "\n🐳 Docker Build Analysis:"
@@ -130,7 +130,7 @@ if command -v gh &> /dev/null && [ -d .github/workflows ]; then
     echo "  Recent failed builds:"
     gh run list --status failure --limit 10 --json conclusion,createdAt,name,event | \
     jq -r '.[] | "    \(.createdAt | split("T")[0]) - \(.name) (\(.event))"' | head -5
-    
+
     echo -e "\n  Common failure reasons:"
     # Analyze workflow logs for common patterns
     gh run list --status failure --limit 20 --json databaseId | \
@@ -195,7 +195,7 @@ if [ -f "pytest.ini" ] || [ -f "setup.cfg" ] || [ -f "pyproject.toml" ]; then
         find . -name "test_*.py" -o -name "*_test.py" | wc -l | xargs echo "    Total test files:"
         grep -r "def test_" --include="*.py" . 2>/dev/null | wc -l | xargs echo "    Total test functions:"
     fi
-    
+
     # Check for test parallelization
     grep -q "pytest-xdist\|pytest-parallel" requirements*.txt 2>/dev/null && echo "    ✅ Parallel test execution enabled"
 fi
@@ -204,11 +204,11 @@ fi
 if [ -f "frontend/package.json" ]; then
     echo -e "\n  Frontend Test Suite:"
     find frontend -name "*.test.*" -o -name "*.spec.*" | wc -l | xargs echo "    Total test files:"
-    
+
     # Check test runner configuration
     grep -q "jest" frontend/package.json && echo "    ✅ Jest test runner configured"
     grep -q "vitest" frontend/package.json && echo "    ✅ Vitest test runner configured"
-    
+
     # Check for parallel execution
     if [ -f "frontend/jest.config.js" ] || [ -f "frontend/jest.config.json" ]; then
         grep -q "maxWorkers" frontend/jest.config.* && echo "    ✅ Parallel test execution configured"
@@ -235,7 +235,7 @@ echo "  Test structure analysis:"
 # Check for test organization patterns
 test_patterns=(
     "unit"
-    "integration" 
+    "integration"
     "e2e"
     "functional"
     "performance"
@@ -257,16 +257,16 @@ echo "🐳 Docker Image Analysis:"
 if command -v docker &> /dev/null && [ -f "Dockerfile" ]; then
     echo "  Local Docker images:"
     docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep -E "mobius|context-engine" | head -5 | sed 's/^/    /'
-    
+
     # Analyze Dockerfile for optimization opportunities
     echo -e "\n  Dockerfile optimization opportunities:"
-    
+
     # Check for multi-stage builds
     grep -q "FROM.*AS" Dockerfile && echo "    ✅ Multi-stage build detected" || echo "    ⚠️  Consider using multi-stage builds"
-    
+
     # Check for layer caching optimization
     grep -q "COPY requirements.*\nRUN pip install" Dockerfile && echo "    ✅ Dependency layer caching optimized"
-    
+
     # Check for .dockerignore
     [ -f ".dockerignore" ] && echo "    ✅ .dockerignore file present" || echo "    ⚠️  Missing .dockerignore file"
 fi
@@ -341,21 +341,21 @@ if [ -d ".github/workflows" ]; then
     for workflow in .github/workflows/*.yml .github/workflows/*.yaml; do
         [ -f "$workflow" ] && echo "    - $(basename $workflow)"
     done
-    
+
     echo -e "\n  Workflow efficiency analysis:"
-    
+
     # Check for caching
     grep -l "actions/cache\|cache:" .github/workflows/*.y*ml 2>/dev/null | wc -l | \
         xargs echo "    Workflows using caching:"
-    
+
     # Check for matrix builds
     grep -l "matrix:" .github/workflows/*.y*ml 2>/dev/null | wc -l | \
         xargs echo "    Workflows using matrix builds:"
-    
+
     # Check for artifact uploads
     grep -l "actions/upload-artifact\|actions/download-artifact" .github/workflows/*.y*ml 2>/dev/null | wc -l | \
         xargs echo "    Workflows using artifacts:"
-    
+
     # Analyze workflow triggers
     echo -e "\n  Workflow triggers:"
     grep -h "on:" -A 5 .github/workflows/*.y*ml 2>/dev/null | \
@@ -366,17 +366,17 @@ fi
 # Performance metrics from CI
 if command -v gh &> /dev/null; then
     echo -e "\n📈 CI Performance Metrics (Last 7 days):"
-    
+
     # Get average build times by workflow
     echo "  Average build times:"
     gh run list --limit 50 --json workflowName,createdAt,updatedAt,conclusion | \
     jq -r '
-        group_by(.workflowName) | 
+        group_by(.workflowName) |
         map({
             workflow: .[0].workflowName,
             avg_duration: (map(select(.conclusion == "success") | ((.updatedAt | fromdate) - (.createdAt | fromdate))) | add / length | floor),
             success_rate: ((map(select(.conclusion == "success")) | length) / length * 100 | floor)
-        }) | 
+        }) |
         .[] | "    \(.workflow): \(.avg_duration)s (Success: \(.success_rate)%)"'
 fi
 ```

@@ -144,29 +144,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
+
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          
+
       - name: Install dependencies
         run: |
           pip install radon lizard coverage
           npm install -g complexity-report ts-complexity jscpd
-          
+
       - name: Run metrics analysis
         run: |
           python scripts/analyze_metrics.py \
             --path . \
             --output metrics.json \
             --threshold 10
-            
+
       - name: Upload metrics
         uses: actions/upload-artifact@v3
         with:
@@ -189,7 +189,7 @@ from datetime import datetime
 def analyze_python_metrics(path):
     """Analyze Python code metrics using radon"""
     metrics = {}
-    
+
     # Cyclomatic complexity
     cc_result = subprocess.run(
         ['radon', 'cc', '-s', '-j', str(path)],
@@ -197,7 +197,7 @@ def analyze_python_metrics(path):
         text=True
     )
     metrics['complexity'] = json.loads(cc_result.stdout) if cc_result.returncode == 0 else {}
-    
+
     # Maintainability index
     mi_result = subprocess.run(
         ['radon', 'mi', '-s', '-j', str(path)],
@@ -205,7 +205,7 @@ def analyze_python_metrics(path):
         text=True
     )
     metrics['maintainability'] = json.loads(mi_result.stdout) if mi_result.returncode == 0 else {}
-    
+
     # Raw metrics
     raw_result = subprocess.run(
         ['radon', 'raw', '-s', '-j', str(path)],
@@ -213,26 +213,26 @@ def analyze_python_metrics(path):
         text=True
     )
     metrics['raw'] = json.loads(raw_result.stdout) if raw_result.returncode == 0 else {}
-    
+
     return metrics
 
 def analyze_typescript_metrics(path):
     """Analyze TypeScript/JavaScript metrics"""
     metrics = {}
-    
+
     # Complexity report
     cr_result = subprocess.run(
         ['npx', 'complexity-report', '--format', 'json', str(path)],
         capture_output=True,
         text=True
     )
-    
+
     if cr_result.returncode == 0:
         try:
             metrics['complexity'] = json.loads(cr_result.stdout)
         except json.JSONDecodeError:
             metrics['complexity'] = {'error': 'Failed to parse complexity report'}
-    
+
     return metrics
 
 def main():
@@ -243,9 +243,9 @@ def main():
     parser.add_argument('--threshold', type=int, default=10, help='Complexity threshold')
     parser.add_argument('--include-tests', action='store_true', help='Include test files')
     parser.add_argument('--coverage', action='store_true', help='Include coverage data')
-    
+
     args = parser.parse_args()
-    
+
     path = Path(args.path)
     results = {
         'timestamp': datetime.now().isoformat(),
@@ -254,20 +254,20 @@ def main():
         'typescript': {},
         'summary': {}
     }
-    
+
     # Analyze Python backend
     backend_path = path / 'backend'
     if backend_path.exists():
         results['python'] = analyze_python_metrics(backend_path)
-    
+
     # Analyze TypeScript frontend
     frontend_path = path / 'frontend' / 'src'
     if frontend_path.exists():
         results['typescript'] = analyze_typescript_metrics(frontend_path)
-    
+
     # Generate summary
     results['summary'] = generate_summary(results, args.threshold)
-    
+
     # Output results
     if args.output:
         with open(args.output, 'w') as f:
@@ -283,13 +283,13 @@ def generate_summary(results, threshold):
         'high_complexity_functions': 0,
         'warnings': []
     }
-    
+
     # Process Python metrics
     if 'raw' in results['python']:
         for file_data in results['python']['raw'].values():
             summary['total_files'] += 1
             summary['total_loc'] += file_data.get('loc', 0)
-    
+
     if 'complexity' in results['python']:
         for file_path, file_data in results['python']['complexity'].items():
             for func in file_data:
@@ -301,7 +301,7 @@ def generate_summary(results, threshold):
                         'function': func.get('name'),
                         'complexity': func.get('complexity')
                     })
-    
+
     return summary
 
 if __name__ == '__main__':

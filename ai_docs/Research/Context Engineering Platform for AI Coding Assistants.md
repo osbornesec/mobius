@@ -88,14 +88,14 @@ Input → Chunking → Semantic Analysis → Compression → Assembly → Delive
 // Language Server Protocol implementation
 export class ContextEngineLanguageServer {
   private connection: Connection;
-  
+
   async provideCompletion(params: CompletionParams): Promise<CompletionItem[]> {
     const context = await this.contextEngine.assembleContext({
       file: params.textDocument.uri,
       position: params.position,
       intent: this.detectIntent(params)
     });
-    
+
     return this.generateCompletions(context);
   }
 }
@@ -143,14 +143,14 @@ class ContextAssembler:
     def assemble_context(self, query: Query) -> Context:
         intent = self.intent_classifier.classify(query)
         template = self.template_selector.select(intent)
-        
+
         contexts = await asyncio.gather(
             self.retrieve_code_context(query),
             self.retrieve_documentation(query),
             self.retrieve_conversation_history(query),
             self.retrieve_project_context(query)
         )
-        
+
         return self.fusion_network.combine(contexts, weights=template.weights)
 ```
 
@@ -215,7 +215,7 @@ class ContextEvaluator:
         FaithfulnessMetric(llm_validator="gpt-4"),
         LatencyMetric(max_ms=200)
     ]
-    
+
     async def evaluate(self, context: Context, query: Query) -> EvaluationResult:
         results = await asyncio.gather(*[
             metric.evaluate(context, query) for metric in self.metrics
@@ -416,7 +416,7 @@ interface MCPServer {
   tools: Tool[];
   resources: Resource[];
   prompts: Prompt[];
-  
+
   async handleRequest(request: MCPRequest): Promise<MCPResponse> {
     const context = await this.contextEngine.process(request);
     return this.formatResponse(context);

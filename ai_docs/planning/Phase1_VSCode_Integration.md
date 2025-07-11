@@ -182,11 +182,11 @@ let activator: ExtensionActivator;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     Logger.initialize(context);
     Logger.info('Mobius Context Engine extension activating...');
-    
+
     try {
         activator = new ExtensionActivator(context);
         await activator.activate();
-        
+
         Logger.info('Mobius Context Engine extension activated successfully');
     } catch (error) {
         Logger.error('Failed to activate extension', error);
@@ -198,11 +198,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export async function deactivate(): Promise<void> {
     Logger.info('Mobius Context Engine extension deactivating...');
-    
+
     if (activator) {
         await activator.deactivate();
     }
-    
+
     Logger.info('Mobius Context Engine extension deactivated');
 }
 ```
@@ -228,9 +228,9 @@ export class ExtensionActivator {
     private statusBarManager: StatusBarManager;
     private contextService: ContextService;
     private disposables: vscode.Disposable[] = [];
-    
+
     constructor(private context: vscode.ExtensionContext) {}
-    
+
     async activate(): Promise<void> {
         // Initialize core services
         this.statusBarManager = new StatusBarManager();
@@ -240,26 +240,26 @@ export class ExtensionActivator {
             this.context,
             this.connectionManager
         );
-        
+
         // Initialize command manager
         this.commandManager = new CommandManager(
             this.connectionManager,
             this.contextService,
             this.statusBarManager
         );
-        
+
         // Register commands
         this.registerCommands();
-        
+
         // Register providers
         this.registerProviders();
-        
+
         // Auto-connect if configured
         const config = vscode.workspace.getConfiguration('mobius');
         if (config.get('apiKey')) {
             await this.connectionManager.connect();
         }
-        
+
         // Watch for configuration changes
         this.context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(
@@ -267,10 +267,10 @@ export class ExtensionActivator {
             )
         );
     }
-    
+
     private registerCommands(): void {
         const commands = this.commandManager.getCommands();
-        
+
         for (const [commandId, handler] of commands) {
             const disposable = vscode.commands.registerCommand(
                 commandId,
@@ -280,7 +280,7 @@ export class ExtensionActivator {
             this.context.subscriptions.push(disposable);
         }
     }
-    
+
     private registerProviders(): void {
         // Register completion provider
         const completionProvider = new CompletionProvider(this.contextService);
@@ -292,7 +292,7 @@ export class ExtensionActivator {
                 ' '
             )
         );
-        
+
         // Register hover provider
         const hoverProvider = new HoverProvider(this.contextService);
         this.disposables.push(
@@ -301,7 +301,7 @@ export class ExtensionActivator {
                 hoverProvider
             )
         );
-        
+
         // Register definition provider
         const definitionProvider = new DefinitionProvider(this.contextService);
         this.disposables.push(
@@ -311,7 +311,7 @@ export class ExtensionActivator {
             )
         );
     }
-    
+
     private async onConfigurationChanged(
         e: vscode.ConfigurationChangeEvent
     ): Promise<void> {
@@ -319,16 +319,16 @@ export class ExtensionActivator {
             await this.connectionManager.reconnect();
         }
     }
-    
+
     async deactivate(): Promise<void> {
         // Dispose all resources
         for (const disposable of this.disposables) {
             disposable.dispose();
         }
-        
+
         // Disconnect from server
         await this.connectionManager.disconnect();
-        
+
         // Stop language client
         await this.languageClientManager.stop();
     }
@@ -356,12 +356,12 @@ import { ConnectionManager } from './connection';
 
 export class LanguageClientManager {
     private client: LanguageClient | null = null;
-    
+
     constructor(
         private context: vscode.ExtensionContext,
         private connectionManager: ConnectionManager
     ) {}
-    
+
     async start(): Promise<void> {
         const serverOptions: ServerOptions = {
             run: {
@@ -374,7 +374,7 @@ export class LanguageClientManager {
                 options: { execArgv: ['--inspect=6009'] }
             }
         };
-        
+
         const clientOptions: LanguageClientOptions = {
             documentSelector: [
                 { scheme: 'file', language: 'python' },
@@ -397,34 +397,34 @@ export class LanguageClientManager {
                         ...context,
                         mobiusContext: await this.getEnhancedContext(document, position)
                     };
-                    
+
                     return next(document, position, enhancedContext, token);
                 }
             }
         };
-        
+
         this.client = new LanguageClient(
             'mobiusLSP',
             'Mobius Language Server',
             serverOptions,
             clientOptions
         );
-        
+
         // Start the client
         await this.client.start();
-        
+
         // Register custom protocol extensions
         this.registerCustomProtocol();
     }
-    
+
     private registerCustomProtocol(): void {
         if (!this.client) return;
-        
+
         // Register custom request handlers
         this.client.onRequest('mobius/getContext', async (params) => {
             return this.connectionManager.getContext(params);
         });
-        
+
         // Register custom notification handlers
         this.client.onNotification('mobius/contextUpdated', (params) => {
             vscode.window.showInformationMessage(
@@ -432,7 +432,7 @@ export class LanguageClientManager {
             );
         });
     }
-    
+
     private async getEnhancedContext(
         document: vscode.TextDocument,
         position: vscode.Position
@@ -442,9 +442,9 @@ export class LanguageClientManager {
             position.translate(-10, 0),
             position.translate(10, 0)
         );
-        
+
         const text = document.getText(range);
-        
+
         return {
             documentUri: document.uri.toString(),
             position: position,
@@ -452,7 +452,7 @@ export class LanguageClientManager {
             language: document.languageId
         };
     }
-    
+
     async stop(): Promise<void> {
         if (this.client) {
             await this.client.stop();
@@ -488,31 +488,31 @@ export class ConnectionManager extends EventEmitter {
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
     private reconnectDelay = 1000;
-    
+
     async connect(): Promise<void> {
         if (this.state.connected || this.state.connecting) {
             return;
         }
-        
+
         this.state.connecting = true;
         this.emit('connecting');
-        
+
         try {
             const config = vscode.workspace.getConfiguration('mobius');
             const serverUrl = config.get<string>('serverUrl', 'http://localhost:8000');
             const wsUrl = serverUrl.replace('http', 'ws') + '/ws';
             const apiKey = config.get<string>('apiKey', '');
-            
+
             this.ws = new WebSocket(wsUrl, {
                 headers: {
                     'Authorization': `Bearer ${apiKey}`
                 }
             });
-            
+
             this.setupEventHandlers();
-            
+
             await this.waitForConnection();
-            
+
         } catch (error) {
             this.state.connecting = false;
             this.state.error = error;
@@ -520,10 +520,10 @@ export class ConnectionManager extends EventEmitter {
             throw error;
         }
     }
-    
+
     private setupEventHandlers(): void {
         if (!this.ws) return;
-        
+
         this.ws.on('open', () => {
             Logger.info('WebSocket connected');
             this.state.connected = true;
@@ -531,7 +531,7 @@ export class ConnectionManager extends EventEmitter {
             this.state.error = null;
             this.reconnectAttempts = 0;
             this.emit('connected');
-            
+
             // Send initial handshake
             this.send({
                 type: 'handshake',
@@ -539,7 +539,7 @@ export class ConnectionManager extends EventEmitter {
                 capabilities: ['completion', 'hover', 'definition']
             });
         });
-        
+
         this.ws.on('message', (data: WebSocket.RawData) => {
             try {
                 const message = JSON.parse(data.toString());
@@ -548,90 +548,90 @@ export class ConnectionManager extends EventEmitter {
                 Logger.error('Failed to parse message', error);
             }
         });
-        
+
         this.ws.on('error', (error: Error) => {
             Logger.error('WebSocket error', error);
             this.state.error = error;
             this.emit('error', error);
         });
-        
+
         this.ws.on('close', (code: number, reason: Buffer) => {
             Logger.info(`WebSocket closed: ${code} - ${reason.toString()}`);
             this.state.connected = false;
             this.state.connecting = false;
             this.emit('disconnected', { code, reason: reason.toString() });
-            
+
             // Attempt to reconnect
             this.scheduleReconnect();
         });
     }
-    
+
     private handleMessage(message: any): void {
         switch (message.type) {
             case 'context_update':
                 this.emit('contextUpdate', message.data);
                 break;
-                
+
             case 'index_progress':
                 this.emit('indexProgress', message.data);
                 break;
-                
+
             case 'error':
                 this.emit('serverError', message.error);
                 break;
-                
+
             default:
                 this.emit('message', message);
         }
     }
-    
+
     private scheduleReconnect(): void {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             Logger.error('Max reconnection attempts reached');
             return;
         }
-        
+
         const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
         this.reconnectAttempts++;
-        
+
         Logger.info(`Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
-        
+
         this.reconnectTimer = setTimeout(() => {
             this.connect().catch(error => {
                 Logger.error('Reconnection failed', error);
             });
         }, delay);
     }
-    
+
     send(message: any): void {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
             throw new Error('WebSocket is not connected');
         }
-        
+
         this.ws.send(JSON.stringify(message));
     }
-    
+
     async request(method: string, params: any): Promise<any> {
         const id = Math.random().toString(36).substr(2, 9);
-        
+
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 this.removeListener(id, handler);
                 reject(new Error('Request timeout'));
             }, 30000);
-            
+
             const handler = (response: any) => {
                 clearTimeout(timeout);
-                
+
                 if (response.error) {
                     reject(new Error(response.error.message));
                 } else {
                     resolve(response.result);
                 }
             };
-            
+
             this.once(id, handler);
-            
+
             this.send({
                 id,
                 method,
@@ -639,50 +639,50 @@ export class ConnectionManager extends EventEmitter {
             });
         });
     }
-    
+
     private waitForConnection(): Promise<void> {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 reject(new Error('Connection timeout'));
             }, 10000);
-            
+
             this.once('connected', () => {
                 clearTimeout(timeout);
                 resolve();
             });
-            
+
             this.once('error', (error) => {
                 clearTimeout(timeout);
                 reject(error);
             });
         });
     }
-    
+
     async disconnect(): Promise<void> {
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
-        
+
         if (this.ws) {
             this.ws.close(1000, 'Client disconnect');
             this.ws = null;
         }
-        
+
         this.state.connected = false;
         this.state.connecting = false;
     }
-    
+
     getServerUrl(): string {
         const config = vscode.workspace.getConfiguration('mobius');
         return config.get<string>('serverUrl', 'http://localhost:8000');
     }
-    
+
     getApiKey(): string {
         const config = vscode.workspace.getConfiguration('mobius');
         return config.get<string>('apiKey', '');
     }
-    
+
     isConnected(): boolean {
         return this.state.connected;
     }
@@ -703,7 +703,7 @@ import { Logger } from '../utils/logger';
 
 export class CompletionProvider implements vscode.CompletionItemProvider {
     constructor(private contextService: ContextService) {}
-    
+
     async provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position,
@@ -716,7 +716,7 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
                 document,
                 position
             );
-            
+
             // Request completions from backend
             const completions = await this.contextService.getCompletions({
                 document: document.uri.toString(),
@@ -728,28 +728,28 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
                 triggerKind: context.triggerKind,
                 triggerCharacter: context.triggerCharacter
             });
-            
+
             // Convert to VSCode completion items
             return completions.map(item => this.createCompletionItem(item));
-            
+
         } catch (error) {
             Logger.error('Failed to provide completions', error);
             return [];
         }
     }
-    
+
     private createCompletionItem(item: any): vscode.CompletionItem {
         const completion = new vscode.CompletionItem(
             item.label,
             this.getCompletionItemKind(item.kind)
         );
-        
+
         completion.detail = item.detail;
         completion.documentation = new vscode.MarkdownString(item.documentation);
         completion.insertText = new vscode.SnippetString(item.insertText);
         completion.filterText = item.filterText;
         completion.sortText = item.sortText;
-        
+
         if (item.additionalTextEdits) {
             completion.additionalTextEdits = item.additionalTextEdits.map(
                 edit => new vscode.TextEdit(
@@ -763,7 +763,7 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
                 )
             );
         }
-        
+
         if (item.command) {
             completion.command = {
                 title: item.command.title,
@@ -771,10 +771,10 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
                 arguments: item.command.arguments
             };
         }
-        
+
         return completion;
     }
-    
+
     private getCompletionItemKind(kind: string): vscode.CompletionItemKind {
         const kindMap: { [key: string]: vscode.CompletionItemKind } = {
             'function': vscode.CompletionItemKind.Function,
@@ -787,7 +787,7 @@ export class CompletionProvider implements vscode.CompletionItemProvider {
             'keyword': vscode.CompletionItemKind.Keyword,
             'snippet': vscode.CompletionItemKind.Snippet
         };
-        
+
         return kindMap[kind] || vscode.CompletionItemKind.Text;
     }
 }
@@ -802,7 +802,7 @@ import { ContextService } from '../services/contextService';
 
 export class HoverProvider implements vscode.HoverProvider {
     constructor(private contextService: ContextService) {}
-    
+
     async provideHover(
         document: vscode.TextDocument,
         position: vscode.Position,
@@ -814,9 +814,9 @@ export class HoverProvider implements vscode.HoverProvider {
             if (!wordRange) {
                 return null;
             }
-            
+
             const word = document.getText(wordRange);
-            
+
             // Get hover information from context service
             const hoverInfo = await this.contextService.getHoverInfo({
                 document: document.uri.toString(),
@@ -826,33 +826,33 @@ export class HoverProvider implements vscode.HoverProvider {
                 },
                 word: word
             });
-            
+
             if (!hoverInfo) {
                 return null;
             }
-            
+
             // Create hover content
             const contents = new vscode.MarkdownString();
-            
+
             // Add signature
             if (hoverInfo.signature) {
                 contents.appendCodeblock(hoverInfo.signature, document.languageId);
             }
-            
+
             // Add documentation
             if (hoverInfo.documentation) {
                 contents.appendMarkdown(hoverInfo.documentation);
             }
-            
+
             // Add context information
             if (hoverInfo.contextInfo) {
                 contents.appendMarkdown('\n\n---\n\n');
                 contents.appendMarkdown('**Context Information:**\n');
                 contents.appendMarkdown(hoverInfo.contextInfo);
             }
-            
+
             return new vscode.Hover(contents, wordRange);
-            
+
         } catch (error) {
             Logger.error('Failed to provide hover', error);
             return null;
@@ -870,7 +870,7 @@ import { ContextService } from '../services/contextService';
 
 export class DefinitionProvider implements vscode.DefinitionProvider {
     constructor(private contextService: ContextService) {}
-    
+
     async provideDefinition(
         document: vscode.TextDocument,
         position: vscode.Position,
@@ -882,9 +882,9 @@ export class DefinitionProvider implements vscode.DefinitionProvider {
             if (!wordRange) {
                 return null;
             }
-            
+
             const word = document.getText(wordRange);
-            
+
             // Get definition locations from context service
             const definitions = await this.contextService.getDefinitions({
                 document: document.uri.toString(),
@@ -894,11 +894,11 @@ export class DefinitionProvider implements vscode.DefinitionProvider {
                 },
                 word: word
             });
-            
+
             if (!definitions || definitions.length === 0) {
                 return null;
             }
-            
+
             // Convert to VSCode locations
             return definitions.map(def => new vscode.Location(
                 vscode.Uri.parse(def.uri),
@@ -909,7 +909,7 @@ export class DefinitionProvider implements vscode.DefinitionProvider {
                     def.range.end.character
                 )
             ));
-            
+
         } catch (error) {
             Logger.error('Failed to provide definition', error);
             return null;
@@ -932,52 +932,52 @@ export class StatusBarManager {
     private statusBarItem: vscode.StatusBarItem;
     private connectionStatus: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
     private indexedFiles: number = 0;
-    
+
     constructor() {
         this.statusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Right,
             100
         );
-        
+
         this.statusBarItem.command = 'mobius.showStatus';
         this.updateStatusBar();
         this.statusBarItem.show();
     }
-    
+
     setConnectionStatus(status: 'disconnected' | 'connecting' | 'connected'): void {
         this.connectionStatus = status;
         this.updateStatusBar();
     }
-    
+
     setIndexedFiles(count: number): void {
         this.indexedFiles = count;
         this.updateStatusBar();
     }
-    
+
     private updateStatusBar(): void {
         const icons = {
             'disconnected': '$(circle-slash)',
             'connecting': '$(sync~spin)',
             'connected': '$(check-all)'
         };
-        
+
         const icon = icons[this.connectionStatus];
         const text = `Mobius ${icon}`;
-        
+
         this.statusBarItem.text = text;
-        
+
         // Update tooltip
         const tooltipLines = [
             `Status: ${this.connectionStatus}`,
             `Files indexed: ${this.indexedFiles}`
         ];
-        
+
         if (this.connectionStatus === 'disconnected') {
             tooltipLines.push('Click to connect');
         }
-        
+
         this.statusBarItem.tooltip = tooltipLines.join('\n');
-        
+
         // Update color
         switch (this.connectionStatus) {
             case 'disconnected':
@@ -995,7 +995,7 @@ export class StatusBarManager {
                 break;
         }
     }
-    
+
     dispose(): void {
         this.statusBarItem.dispose();
     }
@@ -1013,7 +1013,7 @@ import { StatusBarManager } from '../ui/statusBar';
 
 export class CommandManager {
     private commands: Map<string, (...args: any[]) => any>;
-    
+
     constructor(
         private connectionManager: ConnectionManager,
         private contextService: ContextService,
@@ -1028,41 +1028,41 @@ export class CommandManager {
             ['mobius.showStatus', this.showStatus.bind(this)]
         ]);
     }
-    
+
     getCommands(): Map<string, (...args: any[]) => any> {
         return this.commands;
     }
-    
+
     private async connect(): Promise<void> {
         try {
             this.statusBarManager.setConnectionStatus('connecting');
             await this.connectionManager.connect();
             this.statusBarManager.setConnectionStatus('connected');
-            
+
             vscode.window.showInformationMessage('Connected to Mobius Context Engine');
-            
+
             // Start indexing workspace
             await this.refreshIndex();
-            
+
         } catch (error) {
             this.statusBarManager.setConnectionStatus('disconnected');
             vscode.window.showErrorMessage(`Failed to connect: ${error.message}`);
         }
     }
-    
+
     private async disconnect(): Promise<void> {
         await this.connectionManager.disconnect();
         this.statusBarManager.setConnectionStatus('disconnected');
         vscode.window.showInformationMessage('Disconnected from Mobius Context Engine');
     }
-    
+
     private async indexCurrentFile(): Promise<void> {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showWarningMessage('No active editor');
             return;
         }
-        
+
         try {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
@@ -1070,7 +1070,7 @@ export class CommandManager {
                 cancellable: false
             }, async (progress) => {
                 await this.contextService.indexFile(editor.document.uri.fsPath);
-                
+
                 vscode.window.showInformationMessage(
                     `Indexed: ${editor.document.fileName}`
                 );
@@ -1079,32 +1079,32 @@ export class CommandManager {
             vscode.window.showErrorMessage(`Failed to index file: ${error.message}`);
         }
     }
-    
+
     private async showContext(): Promise<void> {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showWarningMessage('No active editor');
             return;
         }
-        
+
         try {
             const context = await this.contextService.getContextForPosition(
                 editor.document,
                 editor.selection.active
             );
-            
+
             // Create output channel
             const outputChannel = vscode.window.createOutputChannel('Mobius Context');
             outputChannel.clear();
             outputChannel.appendLine('Current Context:');
             outputChannel.appendLine(JSON.stringify(context, null, 2));
             outputChannel.show();
-            
+
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to get context: ${error.message}`);
         }
     }
-    
+
     private async refreshIndex(): Promise<void> {
         try {
             await vscode.window.withProgress({
@@ -1117,12 +1117,12 @@ export class CommandManager {
                         increment: data.progress,
                         message: `${data.filesProcessed}/${data.totalFiles} files`
                     });
-                    
+
                     this.statusBarManager.setIndexedFiles(data.filesProcessed);
                 };
-                
+
                 this.connectionManager.on('indexProgress', indexProgress);
-                
+
                 try {
                     await this.contextService.indexWorkspace(token);
                     vscode.window.showInformationMessage('Workspace indexed successfully');
@@ -1134,21 +1134,21 @@ export class CommandManager {
             vscode.window.showErrorMessage(`Failed to index workspace: ${error.message}`);
         }
     }
-    
+
     private async showStatus(): Promise<void> {
         const status = await this.contextService.getStatus();
-        
+
         const items = [
             `Connection: ${status.connected ? 'Connected' : 'Disconnected'}`,
             `Files indexed: ${status.filesIndexed}`,
             `Memory usage: ${status.memoryUsage}MB`,
             `Context quality: ${status.contextQuality}%`
         ];
-        
+
         const selected = await vscode.window.showQuickPick(items, {
             placeHolder: 'Mobius Context Engine Status'
         });
-        
+
         if (selected?.startsWith('Connection: Disconnected')) {
             await this.connect();
         }
@@ -1170,11 +1170,11 @@ import { CacheService } from './cacheService';
 
 export class ContextService {
     private cacheService: CacheService;
-    
+
     constructor(private connectionManager: ConnectionManager) {
         this.cacheService = new CacheService();
     }
-    
+
     async getContextForPosition(
         document: vscode.TextDocument,
         position: vscode.Position
@@ -1182,24 +1182,24 @@ export class ContextService {
         // Check cache first
         const cacheKey = `${document.uri.toString()}-${position.line}-${position.character}`;
         const cached = await this.cacheService.get(cacheKey);
-        
+
         if (cached) {
             return cached;
         }
-        
+
         // Get surrounding context
         const linePrefix = document.lineAt(position).text.substr(0, position.character);
         const lineSuffix = document.lineAt(position).text.substr(position.character);
-        
+
         // Get broader context
         const startLine = Math.max(0, position.line - 50);
         const endLine = Math.min(document.lineCount - 1, position.line + 50);
-        
+
         const contextLines = [];
         for (let i = startLine; i <= endLine; i++) {
             contextLines.push(document.lineAt(i).text);
         }
-        
+
         const context = {
             file: document.uri.fsPath,
             language: document.languageId,
@@ -1212,69 +1212,69 @@ export class ContextService {
             contextLines,
             symbols: await this.getSymbols(document)
         };
-        
+
         // Request enhanced context from backend
         const enhancedContext = await this.connectionManager.request(
             'context/enhance',
             context
         );
-        
+
         // Cache the result
         await this.cacheService.set(cacheKey, enhancedContext, 60000); // 1 minute TTL
-        
+
         return enhancedContext;
     }
-    
+
     async getCompletions(params: any): Promise<any[]> {
         return this.connectionManager.request('completion/provide', params);
     }
-    
+
     async getHoverInfo(params: any): Promise<any> {
         return this.connectionManager.request('hover/provide', params);
     }
-    
+
     async getDefinitions(params: any): Promise<any[]> {
         return this.connectionManager.request('definition/provide', params);
     }
-    
+
     async indexFile(filePath: string): Promise<void> {
         await this.connectionManager.request('index/file', { filePath });
     }
-    
+
     async indexWorkspace(token: vscode.CancellationToken): Promise<void> {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders) {
             return;
         }
-        
+
         const paths = workspaceFolders.map(folder => folder.uri.fsPath);
-        
+
         await this.connectionManager.request('index/workspace', {
             paths,
             cancellationToken: token
         });
     }
-    
+
     async getStatus(): Promise<any> {
         return this.connectionManager.request('status', {});
     }
-    
+
     private async getSymbols(document: vscode.TextDocument): Promise<any[]> {
         const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
             'vscode.executeDocumentSymbolProvider',
             document.uri
         );
-        
+
         if (!symbols) {
             return [];
         }
-        
+
         return this.flattenSymbols(symbols);
     }
-    
+
     private flattenSymbols(symbols: vscode.DocumentSymbol[]): any[] {
         const result: any[] = [];
-        
+
         for (const symbol of symbols) {
             result.push({
                 name: symbol.name,
@@ -1290,12 +1290,12 @@ export class ContextService {
                     }
                 }
             });
-            
+
             if (symbol.children) {
                 result.push(...this.flattenSymbols(symbol.children));
             }
         }
-        
+
         return result;
     }
 }
@@ -1313,54 +1313,54 @@ interface CacheEntry {
 export class CacheService {
     private cache: Map<string, CacheEntry> = new Map();
     private cleanupInterval: NodeJS.Timeout;
-    
+
     constructor() {
         // Cleanup expired entries every minute
         this.cleanupInterval = setInterval(() => {
             this.cleanup();
         }, 60000);
     }
-    
+
     async get(key: string): Promise<any | null> {
         const entry = this.cache.get(key);
-        
+
         if (!entry) {
             return null;
         }
-        
+
         if (Date.now() > entry.expiry) {
             this.cache.delete(key);
             return null;
         }
-        
+
         return entry.value;
     }
-    
+
     async set(key: string, value: any, ttl: number = 300000): Promise<void> {
         this.cache.set(key, {
             value,
             expiry: Date.now() + ttl
         });
     }
-    
+
     async delete(key: string): Promise<void> {
         this.cache.delete(key);
     }
-    
+
     async clear(): Promise<void> {
         this.cache.clear();
     }
-    
+
     private cleanup(): void {
         const now = Date.now();
-        
+
         for (const [key, entry] of this.cache.entries()) {
             if (now > entry.expiry) {
                 this.cache.delete(key);
             }
         }
     }
-    
+
     dispose(): void {
         clearInterval(this.cleanupInterval);
         this.cache.clear();
@@ -1381,12 +1381,12 @@ export function debounce<T extends (...args: any[]) => any>(
     wait: number
 ): (...args: Parameters<T>) => void {
     let timeout: NodeJS.Timeout | null = null;
-    
+
     return (...args: Parameters<T>): void => {
         if (timeout) {
             clearTimeout(timeout);
         }
-        
+
         timeout = setTimeout(() => {
             func(...args);
         }, wait);
@@ -1398,12 +1398,12 @@ export function throttle<T extends (...args: any[]) => any>(
     limit: number
 ): (...args: Parameters<T>) => void {
     let inThrottle = false;
-    
+
     return (...args: Parameters<T>): void => {
         if (!inThrottle) {
             func(...args);
             inThrottle = true;
-            
+
             setTimeout(() => {
                 inThrottle = false;
             }, limit);
@@ -1414,7 +1414,7 @@ export function throttle<T extends (...args: any[]) => any>(
 // Usage in providers
 export class OptimizedCompletionProvider implements vscode.CompletionItemProvider {
     private debouncedGetCompletions: (...args: any[]) => void;
-    
+
     constructor(private contextService: ContextService) {
         // Debounce completion requests
         this.debouncedGetCompletions = debounce(
@@ -1422,7 +1422,7 @@ export class OptimizedCompletionProvider implements vscode.CompletionItemProvide
             300
         );
     }
-    
+
     async provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position,
@@ -1434,7 +1434,7 @@ export class OptimizedCompletionProvider implements vscode.CompletionItemProvide
             this.debouncedGetCompletions(document, position, context, resolve);
         });
     }
-    
+
     private async getCompletions(
         document: vscode.TextDocument,
         position: vscode.Position,
@@ -1446,7 +1446,7 @@ export class OptimizedCompletionProvider implements vscode.CompletionItemProvide
             document: document.uri.toString(),
             position: { line: position.line, character: position.character }
         });
-        
+
         callback(items);
     }
 }
@@ -1460,40 +1460,40 @@ export class MemoryManager {
     private static instance: MemoryManager;
     private memoryUsage: NodeJS.MemoryUsage | null = null;
     private updateInterval: NodeJS.Timeout;
-    
+
     private constructor() {
         this.updateInterval = setInterval(() => {
             this.updateMemoryUsage();
         }, 5000);
     }
-    
+
     static getInstance(): MemoryManager {
         if (!MemoryManager.instance) {
             MemoryManager.instance = new MemoryManager();
         }
         return MemoryManager.instance;
     }
-    
+
     private updateMemoryUsage(): void {
         this.memoryUsage = process.memoryUsage();
-        
+
         // Check if memory usage is too high
         const heapUsedMB = this.memoryUsage.heapUsed / 1024 / 1024;
-        
+
         if (heapUsedMB > 500) {
             Logger.warn(`High memory usage: ${heapUsedMB.toFixed(2)}MB`);
-            
+
             // Trigger garbage collection if available
             if (global.gc) {
                 global.gc();
             }
         }
     }
-    
+
     getMemoryUsage(): NodeJS.MemoryUsage | null {
         return this.memoryUsage;
     }
-    
+
     dispose(): void {
         clearInterval(this.updateInterval);
     }
@@ -1588,12 +1588,12 @@ jest.mock('../../services/contextService');
 describe('CompletionProvider', () => {
     let provider: CompletionProvider;
     let mockContextService: jest.Mocked<ContextService>;
-    
+
     beforeEach(() => {
         mockContextService = new ContextService() as jest.Mocked<ContextService>;
         provider = new CompletionProvider(mockContextService);
     });
-    
+
     it('should provide completions', async () => {
         const mockCompletions = [
             {
@@ -1603,21 +1603,21 @@ describe('CompletionProvider', () => {
                 documentation: 'Test function'
             }
         ];
-        
+
         mockContextService.getCompletions.mockResolvedValue(mockCompletions);
-        
+
         const document = {} as vscode.TextDocument;
         const position = new vscode.Position(0, 0);
         const token = {} as vscode.CancellationToken;
         const context = {} as vscode.CompletionContext;
-        
+
         const items = await provider.provideCompletionItems(
             document,
             position,
             token,
             context
         );
-        
+
         expect(items).toHaveLength(1);
         expect(items[0].label).toBe('testFunction');
     });
@@ -1633,35 +1633,35 @@ import * as path from 'path';
 
 describe('Extension Integration Tests', () => {
     const extensionId = 'mobius.mobius-context-engine';
-    
+
     beforeAll(async () => {
         const ext = vscode.extensions.getExtension(extensionId);
         await ext?.activate();
     });
-    
+
     it('should register all commands', async () => {
         const commands = await vscode.commands.getCommands();
-        
+
         expect(commands).toContain('mobius.connect');
         expect(commands).toContain('mobius.disconnect');
         expect(commands).toContain('mobius.indexCurrentFile');
         expect(commands).toContain('mobius.showContext');
     });
-    
+
     it('should provide completions for Python files', async () => {
         const docUri = vscode.Uri.file(
             path.join(__dirname, 'fixtures', 'test.py')
         );
-        
+
         const document = await vscode.workspace.openTextDocument(docUri);
         const position = new vscode.Position(5, 10);
-        
+
         const completions = await vscode.commands.executeCommand<vscode.CompletionList>(
             'vscode.executeCompletionItemProvider',
             docUri,
             position
         );
-        
+
         expect(completions.items.length).toBeGreaterThan(0);
     });
 });
@@ -1707,27 +1707,27 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
-        
+
     - name: Install dependencies
       run: npm ci
-      
+
     - name: Run linter
       run: npm run lint
-      
+
     - name: Run tests
       run: npm test
-      
+
     - name: Build extension
       run: npm run package
-      
+
     - name: Upload VSIX
       uses: actions/upload-artifact@v3
       with:

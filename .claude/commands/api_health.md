@@ -89,17 +89,17 @@ class EndpointMetrics:
     cache_hits: int = 0
     cache_misses: int = 0
     db_query_times: List[float] = field(default_factory=list)
-    
+
     @property
     def success_rate(self) -> float:
         if self.total_requests == 0:
             return 0.0
         return (self.successful_requests / self.total_requests) * 100
-    
+
     @property
     def avg_response_time(self) -> float:
         return statistics.mean(self.response_times) if self.response_times else 0.0
-    
+
     @property
     def p95_response_time(self) -> float:
         if not self.response_times:
@@ -107,7 +107,7 @@ class EndpointMetrics:
         sorted_times = sorted(self.response_times)
         index = int(len(sorted_times) * 0.95)
         return sorted_times[index] if index < len(sorted_times) else sorted_times[-1]
-    
+
     @property
     def cache_hit_rate(self) -> float:
         total_cache_requests = self.cache_hits + self.cache_misses
@@ -118,7 +118,7 @@ class EndpointMetrics:
 
 class APIHealthMonitor:
     """Main API health monitoring class."""
-    
+
     def __init__(self, base_url: str = "http://localhost:8000", api_key: Optional[str] = None):
         self.base_url = base_url
         self.api_key = api_key
@@ -127,7 +127,7 @@ class APIHealthMonitor:
         self.openapi_spec = None
         self.redis_client = None
         self.db_engine = None
-        
+
     async def initialize(self):
         """Initialize connections and load OpenAPI spec."""
         try:
@@ -139,166 +139,166 @@ class APIHealthMonitor:
                     console.print("[green]✓ Loaded OpenAPI specification[/green]")
                 else:
                     console.print("[yellow]⚠ Could not load OpenAPI spec[/yellow]")
-            
+
             # Initialize Redis connection
             try:
                 self.redis_client = await aioredis.create_redis_pool('redis://localhost')
                 console.print("[green]✓ Connected to Redis[/green]")
             except Exception as e:
                 console.print(f"[yellow]⚠ Redis connection failed: {e}[/yellow]")
-            
+
             # Initialize database connection
             try:
                 self.db_engine = create_engine("postgresql://user:password@localhost/mobius")
                 console.print("[green]✓ Connected to PostgreSQL[/green]")
             except Exception as e:
                 console.print(f"[yellow]⚠ Database connection failed: {e}[/yellow]")
-                
+
         except Exception as e:
             console.print(f"[red]✗ Initialization error: {e}[/red]")
-    
-    async def test_endpoint(self, endpoint: str, method: str = "GET", 
+
+    async def test_endpoint(self, endpoint: str, method: str = "GET",
                           payload: Optional[Dict] = None) -> EndpointMetrics:
         """Test a single endpoint and collect metrics."""
-        metrics = self.metrics.get(f"{method}:{endpoint}", 
+        metrics = self.metrics.get(f"{method}:{endpoint}",
                                  EndpointMetrics(endpoint=endpoint, method=method))
-        
+
         async with httpx.AsyncClient() as client:
             start_time = time.time()
-            
+
             try:
                 # Prepare request
                 kwargs = {"headers": self.headers}
                 if payload:
                     kwargs["json"] = payload
-                
+
                 # Make request
                 response = await client.request(
-                    method, 
+                    method,
                     f"{self.base_url}{endpoint}",
                     **kwargs
                 )
-                
+
                 # Calculate metrics
                 response_time = time.time() - start_time
                 metrics.response_times.append(response_time)
                 metrics.total_requests += 1
-                
+
                 if 200 <= response.status_code < 300:
                     metrics.successful_requests += 1
                 else:
                     metrics.failed_requests += 1
                     metrics.error_codes[response.status_code] += 1
-                
+
                 # Size metrics
                 request_size = len(json.dumps(payload) if payload else "")
                 response_size = len(response.content)
                 metrics.request_sizes.append(request_size)
                 metrics.response_sizes.append(response_size)
-                
+
                 # Check cache headers
                 if "X-Cache-Hit" in response.headers:
                     if response.headers["X-Cache-Hit"] == "true":
                         metrics.cache_hits += 1
                     else:
                         metrics.cache_misses += 1
-                
+
                 # Update Prometheus metrics
-                request_count.labels(endpoint=endpoint, method=method, 
+                request_count.labels(endpoint=endpoint, method=method,
                                    status=response.status_code).inc()
                 request_duration.labels(endpoint=endpoint, method=method).observe(response_time)
-                
+
             except Exception as e:
                 metrics.failed_requests += 1
                 metrics.total_requests += 1
                 console.print(f"[red]✗ Error testing {endpoint}: {e}[/red]")
-        
+
         self.metrics[f"{method}:{endpoint}"] = metrics
         return metrics
-    
+
     async def run_full_scan(self):
         """Scan all endpoints from OpenAPI spec."""
         if not self.openapi_spec:
             console.print("[red]✗ No OpenAPI spec available[/red]")
             return
-        
+
         endpoints = []
         for path, methods in self.openapi_spec.get("paths", {}).items():
             for method in methods:
                 if method.upper() in ["GET", "POST", "PUT", "DELETE", "PATCH"]:
                     endpoints.append((path, method.upper()))
-        
+
         console.print(f"[cyan]Scanning {len(endpoints)} endpoints...[/cyan]")
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console
         ) as progress:
             task = progress.add_task("Testing endpoints...", total=len(endpoints))
-            
+
             for endpoint, method in endpoints:
                 await self.test_endpoint(endpoint, method)
-                progress.update(task, advance=1, 
+                progress.update(task, advance=1,
                               description=f"Testing {method} {endpoint}")
-    
+
     async def monitor_endpoint_live(self, endpoint: str, duration: int = 60):
         """Monitor an endpoint in real-time."""
         console.print(f"[cyan]Monitoring {endpoint} for {duration} seconds...[/cyan]")
-        
+
         start_time = time.time()
-        
+
         with Live(self._generate_live_table(endpoint), refresh_per_second=1) as live:
             while time.time() - start_time < duration:
                 await self.test_endpoint(endpoint)
                 live.update(self._generate_live_table(endpoint))
                 await asyncio.sleep(1)
-    
+
     def _generate_live_table(self, endpoint: str) -> Table:
         """Generate a live monitoring table."""
         metrics = self.metrics.get(f"GET:{endpoint}", EndpointMetrics(endpoint=endpoint))
-        
+
         table = Table(title=f"Live Monitoring: {endpoint}")
         table.add_column("Metric", style="cyan")
         table.add_column("Value", style="green")
-        
+
         table.add_row("Total Requests", str(metrics.total_requests))
         table.add_row("Success Rate", f"{metrics.success_rate:.2f}%")
         table.add_row("Avg Response Time", f"{metrics.avg_response_time:.3f}s")
         table.add_row("P95 Response Time", f"{metrics.p95_response_time:.3f}s")
         table.add_row("Cache Hit Rate", f"{metrics.cache_hit_rate:.2f}%")
         table.add_row("Active Connections", str(active_connections._value.get()))
-        
+
         return table
-    
-    async def stress_test(self, endpoint: str, concurrent: int = 100, 
+
+    async def stress_test(self, endpoint: str, concurrent: int = 100,
                          duration: int = 60):
         """Run stress test on endpoint."""
         console.print(f"[cyan]Stress testing {endpoint} with {concurrent} concurrent requests for {duration}s...[/cyan]")
-        
+
         async def worker():
             while time.time() - start_time < duration:
                 await self.test_endpoint(endpoint)
-        
+
         start_time = time.time()
         tasks = [asyncio.create_task(worker()) for _ in range(concurrent)]
         await asyncio.gather(*tasks)
-        
+
         metrics = self.metrics.get(f"GET:{endpoint}")
         if metrics:
             console.print(f"[green]✓ Completed {metrics.total_requests} requests[/green]")
             console.print(f"[yellow]Success rate: {metrics.success_rate:.2f}%[/yellow]")
             console.print(f"[yellow]Avg response time: {metrics.avg_response_time:.3f}s[/yellow]")
-    
+
     def validate_api_standards(self) -> List[Dict]:
         """Validate API against REST standards and best practices."""
         issues = []
-        
+
         if not self.openapi_spec:
             return [{"severity": "critical", "issue": "No OpenAPI specification found"}]
-        
+
         paths = self.openapi_spec.get("paths", {})
-        
+
         # Check RESTful naming conventions
         for path in paths:
             if not path.startswith("/api/v"):
@@ -306,7 +306,7 @@ class APIHealthMonitor:
                     "severity": "warning",
                     "issue": f"Path '{path}' does not follow versioning convention"
                 })
-            
+
             # Check for proper resource naming
             parts = path.split("/")
             for i, part in enumerate(parts):
@@ -316,25 +316,25 @@ class APIHealthMonitor:
                             "severity": "warning",
                             "issue": f"Resource '{part}' in path '{path}' should be lowercase"
                         })
-        
+
         # Check for consistent error responses
         for path, methods in paths.items():
             for method, details in methods.items():
                 responses = details.get("responses", {})
-                
+
                 # Should have standard error responses
                 if "400" not in responses:
                     issues.append({
                         "severity": "info",
                         "issue": f"{method.upper()} {path} missing 400 Bad Request response"
                     })
-                
+
                 if method.upper() in ["POST", "PUT", "PATCH", "DELETE"] and "401" not in responses:
                     issues.append({
                         "severity": "warning",
                         "issue": f"{method.upper()} {path} missing 401 Unauthorized response"
                     })
-        
+
         # Check for rate limiting headers
         sample_endpoint = list(paths.keys())[0] if paths else None
         if sample_endpoint:
@@ -343,9 +343,9 @@ class APIHealthMonitor:
                 # Check if rate limit headers are present
                 # This would need actual response header checking
                 pass
-        
+
         return issues
-    
+
     def generate_report(self, output_format: str = "html") -> str:
         """Generate comprehensive health report."""
         report_data = {
@@ -358,7 +358,7 @@ class APIHealthMonitor:
             "api_standards": self.validate_api_standards(),
             "performance_summary": self._generate_performance_summary()
         }
-        
+
         # Compile endpoint metrics
         for key, metrics in self.metrics.items():
             report_data["endpoint_metrics"].append({
@@ -371,32 +371,32 @@ class APIHealthMonitor:
                 "cache_hit_rate": metrics.cache_hit_rate,
                 "error_codes": dict(metrics.error_codes)
             })
-        
+
         if output_format == "html":
             return self._generate_html_report(report_data)
         elif output_format == "json":
             return json.dumps(report_data, indent=2)
         else:
             return self._generate_text_report(report_data)
-    
+
     def _calculate_overall_success_rate(self) -> float:
         """Calculate overall API success rate."""
         total_requests = sum(m.total_requests for m in self.metrics.values())
         successful_requests = sum(m.successful_requests for m in self.metrics.values())
-        
+
         if total_requests == 0:
             return 0.0
         return (successful_requests / total_requests) * 100
-    
+
     def _generate_performance_summary(self) -> Dict:
         """Generate performance summary statistics."""
         all_response_times = []
         for metrics in self.metrics.values():
             all_response_times.extend(metrics.response_times)
-        
+
         if not all_response_times:
             return {}
-        
+
         return {
             "avg_response_time": statistics.mean(all_response_times),
             "median_response_time": statistics.median(all_response_times),
@@ -405,7 +405,7 @@ class APIHealthMonitor:
             "min_response_time": min(all_response_times),
             "max_response_time": max(all_response_times)
         }
-    
+
     def _generate_html_report(self, data: Dict) -> str:
         """Generate HTML report."""
         html = f"""
@@ -432,7 +432,7 @@ class APIHealthMonitor:
                 <p>Generated: {data['timestamp']}</p>
                 <p>Base URL: {data['base_url']}</p>
             </div>
-            
+
             <div class="metric-card">
                 <h2>Overall Metrics</h2>
                 <p>Endpoints Tested: {data['endpoints_tested']}</p>
@@ -441,7 +441,7 @@ class APIHealthMonitor:
                     Overall Success Rate: {data['overall_success_rate']:.2f}%
                 </p>
             </div>
-            
+
             <h2>Endpoint Performance</h2>
             <table>
                 <tr>
@@ -454,7 +454,7 @@ class APIHealthMonitor:
                     <th>Cache Hit Rate</th>
                 </tr>
         """
-        
+
         for endpoint in data['endpoint_metrics']:
             success_class = 'success' if endpoint['success_rate'] > 95 else 'warning' if endpoint['success_rate'] > 90 else 'danger'
             html += f"""
@@ -468,14 +468,14 @@ class APIHealthMonitor:
                     <td>{endpoint['cache_hit_rate']:.2f}%</td>
                 </tr>
             """
-        
+
         html += """
             </table>
-            
+
             <h2>API Standards Compliance</h2>
             <div class="metric-card">
         """
-        
+
         if data['api_standards']:
             html += "<ul>"
             for issue in data['api_standards']:
@@ -484,14 +484,14 @@ class APIHealthMonitor:
             html += "</ul>"
         else:
             html += '<p class="success">All API standards checks passed!</p>'
-        
+
         html += """
             </div>
-            
+
             <h2>Performance Summary</h2>
             <div class="metric-card">
         """
-        
+
         if data['performance_summary']:
             perf = data['performance_summary']
             html += f"""
@@ -502,15 +502,15 @@ class APIHealthMonitor:
                 <p>Min Response Time: {perf['min_response_time']:.3f}s</p>
                 <p>Max Response Time: {perf['max_response_time']:.3f}s</p>
             """
-        
+
         html += """
             </div>
         </body>
         </html>
         """
-        
+
         return html
-    
+
     def _generate_text_report(self, data: Dict) -> str:
         """Generate text report."""
         report = f"""
@@ -528,11 +528,11 @@ Overall Success Rate: {data['overall_success_rate']:.2f}%
 ENDPOINT PERFORMANCE
 -------------------
 """
-        
+
         # Create table data
         headers = ["Endpoint", "Method", "Requests", "Success Rate", "Avg Response", "P95 Response", "Cache Hit Rate"]
         rows = []
-        
+
         for endpoint in data['endpoint_metrics']:
             rows.append([
                 endpoint['endpoint'],
@@ -543,17 +543,17 @@ ENDPOINT PERFORMANCE
                 f"{endpoint['p95_response_time']:.3f}s",
                 f"{endpoint['cache_hit_rate']:.2f}%"
             ])
-        
+
         report += tabulate(rows, headers=headers, tablefmt="grid")
-        
+
         report += "\n\nAPI STANDARDS COMPLIANCE\n------------------------\n"
-        
+
         if data['api_standards']:
             for issue in data['api_standards']:
                 report += f"[{issue['severity'].upper()}] {issue['issue']}\n"
         else:
             report += "All API standards checks passed!\n"
-        
+
         if data['performance_summary']:
             perf = data['performance_summary']
             report += f"""
@@ -566,24 +566,24 @@ Median Response Time: {perf['median_response_time']:.3f}s
 Min Response Time: {perf['min_response_time']:.3f}s
 Max Response Time: {perf['max_response_time']:.3f}s
 """
-        
+
         return report
-    
+
     async def check_database_performance(self):
         """Check database query performance for API endpoints."""
         if not self.db_engine:
             console.print("[yellow]⚠ Database connection not available[/yellow]")
             return
-        
+
         # Sample queries to test
         test_queries = [
             ("SELECT COUNT(*) FROM contexts", "Count contexts"),
             ("SELECT * FROM contexts LIMIT 100", "Fetch contexts"),
             ("SELECT * FROM users WHERE id = 1", "Fetch user by ID"),
         ]
-        
+
         results = []
-        
+
         with self.db_engine.connect() as conn:
             for query, description in test_queries:
                 start_time = time.time()
@@ -601,32 +601,32 @@ Max Response Time: {perf['max_response_time']:.3f}s
                         "duration": 0,
                         "status": f"error: {str(e)}"
                     })
-        
+
         # Display results
         table = Table(title="Database Performance")
         table.add_column("Query", style="cyan")
         table.add_column("Duration", style="green")
         table.add_column("Status", style="yellow")
-        
+
         for result in results:
             table.add_row(
                 result["query"],
                 f"{result['duration']:.3f}s" if result['duration'] > 0 else "N/A",
                 result["status"]
             )
-        
+
         console.print(table)
-    
+
     async def generate_prometheus_metrics(self) -> bytes:
         """Generate Prometheus metrics."""
         # Update gauges based on current metrics
         for key, metrics in self.metrics.items():
             endpoint = metrics.endpoint
             error_rate.labels(endpoint=endpoint).set(100 - metrics.success_rate)
-            
+
             if metrics.cache_hits + metrics.cache_misses > 0:
                 cache_hit_rate.set(metrics.cache_hit_rate)
-        
+
         return generate_latest()
 
 
@@ -644,17 +644,17 @@ Max Response Time: {perf['max_response_time']:.3f}s
 @click.option('--concurrent', type=int, default=100, help='Concurrent requests for stress test')
 @click.option('--check-db', is_flag=True, help='Check database performance')
 @click.option('--prometheus', is_flag=True, help='Export Prometheus metrics')
-def main(base_url, api_key, full_scan, endpoint, duration, report, output, 
+def main(base_url, api_key, full_scan, endpoint, duration, report, output,
          format, dashboard, stress_test, concurrent, check_db, prometheus):
     """Mobius API Health Monitoring Tool"""
-    
+
     async def run():
         monitor = APIHealthMonitor(base_url, api_key)
         await monitor.initialize()
-        
+
         if full_scan:
             await monitor.run_full_scan()
-        
+
         if endpoint:
             if stress_test:
                 await monitor.stress_test(endpoint, concurrent, duration)
@@ -662,24 +662,24 @@ def main(base_url, api_key, full_scan, endpoint, duration, report, output,
                 await monitor.monitor_endpoint_live(endpoint, duration)
             else:
                 await monitor.test_endpoint(endpoint)
-        
+
         if check_db:
             await monitor.check_database_performance()
-        
+
         if report:
             report_content = monitor.generate_report(format)
-            
+
             if output:
                 with open(output, 'w') as f:
                     f.write(report_content)
                 console.print(f"[green]✓ Report saved to {output}[/green]")
             else:
                 console.print(report_content)
-        
+
         if prometheus:
             metrics_data = await monitor.generate_prometheus_metrics()
             console.print(metrics_data.decode())
-        
+
         # Display summary
         if not report and monitor.metrics:
             table = Table(title="API Health Summary")
@@ -687,7 +687,7 @@ def main(base_url, api_key, full_scan, endpoint, duration, report, output,
             table.add_column("Method", style="magenta")
             table.add_column("Success Rate", style="green")
             table.add_column("Avg Response", style="yellow")
-            
+
             for key, metrics in monitor.metrics.items():
                 table.add_row(
                     metrics.endpoint,
@@ -695,9 +695,9 @@ def main(base_url, api_key, full_scan, endpoint, duration, report, output,
                     f"{metrics.success_rate:.2f}%",
                     f"{metrics.avg_response_time:.3f}s"
                 )
-            
+
             console.print(table)
-    
+
     asyncio.run(run())
 
 
@@ -719,43 +719,43 @@ from typing import Callable
 
 class HealthMetricsMiddleware(BaseHTTPMiddleware):
     """Middleware to collect API health metrics."""
-    
+
     def __init__(self, app, redis_client: redis.Redis):
         super().__init__(app)
         self.redis = redis_client
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Track request start time
         start_time = time.time()
-        
+
         # Get cache status before request
         cache_key = f"cache:{request.url.path}:{request.method}"
         was_cached = await self.redis.exists(cache_key)
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Calculate metrics
         process_time = time.time() - start_time
-        
+
         # Add custom headers
         response.headers["X-Process-Time"] = str(process_time)
         response.headers["X-Cache-Hit"] = "true" if was_cached else "false"
-        
+
         # Store metrics in Redis
         metrics_key = f"metrics:{request.url.path}:{request.method}"
         await self.redis.hincrby(metrics_key, "total_requests", 1)
-        
+
         if 200 <= response.status_code < 300:
             await self.redis.hincrby(metrics_key, "successful_requests", 1)
         else:
             await self.redis.hincrby(metrics_key, "failed_requests", 1)
             await self.redis.hincrby(metrics_key, f"status_{response.status_code}", 1)
-        
+
         # Store response time
         await self.redis.lpush(f"{metrics_key}:response_times", process_time)
         await self.redis.ltrim(f"{metrics_key}:response_times", 0, 999)  # Keep last 1000
-        
+
         return response
 ```
 
@@ -779,34 +779,34 @@ console = Console()
 
 class APIDashboard:
     """Real-time API monitoring dashboard."""
-    
+
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
         self.metrics = {}
         self.alerts = []
-    
+
     def create_layout(self) -> Layout:
         """Create dashboard layout."""
         layout = Layout()
-        
+
         layout.split(
             Layout(name="header", size=3),
             Layout(name="body"),
             Layout(name="footer", size=3)
         )
-        
+
         layout["body"].split_row(
             Layout(name="metrics", ratio=2),
             Layout(name="alerts", ratio=1)
         )
-        
+
         layout["metrics"].split_column(
             Layout(name="endpoints"),
             Layout(name="performance")
         )
-        
+
         return layout
-    
+
     def update_header(self, layout: Layout):
         """Update header section."""
         header_text = Text(
@@ -814,7 +814,7 @@ class APIDashboard:
             style="bold blue"
         )
         layout["header"].update(Panel(header_text, title="Dashboard"))
-    
+
     def update_endpoints(self, layout: Layout):
         """Update endpoints table."""
         table = Table(title="Endpoint Status")
@@ -822,7 +822,7 @@ class APIDashboard:
         table.add_column("Status", style="green")
         table.add_column("Response Time", style="yellow")
         table.add_column("Success Rate", style="magenta")
-        
+
         for endpoint, metrics in self.metrics.items():
             status = "🟢" if metrics.get("healthy", False) else "🔴"
             table.add_row(
@@ -831,32 +831,32 @@ class APIDashboard:
                 f"{metrics.get('response_time', 0):.3f}s",
                 f"{metrics.get('success_rate', 0):.1f}%"
             )
-        
+
         layout["endpoints"].update(Panel(table, title="Endpoints"))
-    
+
     def update_performance(self, layout: Layout):
         """Update performance metrics."""
         perf_text = Text()
-        
+
         total_requests = sum(m.get("requests", 0) for m in self.metrics.values())
         avg_response = sum(m.get("response_time", 0) for m in self.metrics.values()) / max(len(self.metrics), 1)
-        
+
         perf_text.append(f"Total Requests: {total_requests}\n", style="cyan")
         perf_text.append(f"Avg Response Time: {avg_response:.3f}s\n", style="yellow")
         perf_text.append(f"Active Endpoints: {len(self.metrics)}\n", style="green")
-        
+
         layout["performance"].update(Panel(perf_text, title="Performance"))
-    
+
     def update_alerts(self, layout: Layout):
         """Update alerts section."""
         alerts_text = Text()
-        
+
         for alert in self.alerts[-10:]:  # Show last 10 alerts
             style = "red" if alert["severity"] == "critical" else "yellow"
             alerts_text.append(f"[{alert['time']}] {alert['message']}\n", style=style)
-        
+
         layout["alerts"].update(Panel(alerts_text, title="Alerts"))
-    
+
     def update_footer(self, layout: Layout):
         """Update footer section."""
         footer_text = Text(
@@ -864,7 +864,7 @@ class APIDashboard:
             style="dim"
         )
         layout["footer"].update(Panel(footer_text))
-    
+
     async def fetch_metrics(self):
         """Fetch current metrics from API."""
         try:
@@ -879,21 +879,21 @@ class APIDashboard:
                 "severity": "warning",
                 "message": f"Failed to fetch metrics: {e}"
             })
-    
+
     async def run(self):
         """Run the dashboard."""
         layout = self.create_layout()
-        
+
         with Live(layout, refresh_per_second=1) as live:
             while True:
                 await self.fetch_metrics()
-                
+
                 self.update_header(layout)
                 self.update_endpoints(layout)
                 self.update_performance(layout)
                 self.update_alerts(layout)
                 self.update_footer(layout)
-                
+
                 await asyncio.sleep(1)
 
 if __name__ == "__main__":
@@ -918,29 +918,29 @@ import asyncio
 
 class TestAPIHealth:
     """Comprehensive API health tests."""
-    
+
     @pytest.fixture
     def client(self):
         """Create test client."""
         from app.main import app
         return TestClient(app)
-    
+
     def test_openapi_spec_available(self, client):
         """Test that OpenAPI spec is accessible."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
         assert "openapi" in response.json()
         assert "paths" in response.json()
-    
+
     def test_all_endpoints_documented(self, client):
         """Test that all endpoints have documentation."""
         spec = client.get("/openapi.json").json()
-        
+
         for path, methods in spec["paths"].items():
             for method, details in methods.items():
                 assert "summary" in details, f"{method.upper()} {path} missing summary"
                 assert "responses" in details, f"{method.upper()} {path} missing responses"
-    
+
     @pytest.mark.parametrize("endpoint", [
         "/api/v1/contexts",
         "/api/v1/projects",
@@ -949,39 +949,39 @@ class TestAPIHealth:
     def test_endpoint_performance(self, client, endpoint):
         """Test endpoint response times."""
         response = client.get(endpoint)
-        
+
         # Check response time header
         assert "X-Process-Time" in response.headers
         process_time = float(response.headers["X-Process-Time"])
-        
+
         # Should respond within 200ms
         assert process_time < 0.2, f"{endpoint} took {process_time}s"
-    
+
     @pytest.mark.asyncio
     async def test_concurrent_requests(self, client):
         """Test API under concurrent load."""
         async def make_request(client, endpoint):
             return client.get(endpoint)
-        
+
         # Make 100 concurrent requests
         tasks = [make_request(client, "/api/v1/health") for _ in range(100)]
         responses = await asyncio.gather(*tasks)
-        
+
         # All should succeed
         success_count = sum(1 for r in responses if r.status_code == 200)
         assert success_count == 100, f"Only {success_count}/100 requests succeeded"
-    
+
     def test_rate_limiting(self, client):
         """Test rate limiting functionality."""
         # Make many requests quickly
         responses = []
         for _ in range(150):
             responses.append(client.get("/api/v1/contexts"))
-        
+
         # Should get rate limited
         rate_limited = sum(1 for r in responses if r.status_code == 429)
         assert rate_limited > 0, "Rate limiting not working"
-    
+
     def test_error_response_format(self, client):
         """Test standardized error responses."""
         # Test 404
@@ -989,29 +989,29 @@ class TestAPIHealth:
         assert response.status_code == 404
         error_data = response.json()
         assert "detail" in error_data or "message" in error_data
-        
+
         # Test 400
         response = client.post("/api/v1/contexts", json={"invalid": "data"})
         assert response.status_code == 400
         error_data = response.json()
         assert "detail" in error_data
-    
+
     def test_cors_headers(self, client):
         """Test CORS configuration."""
         response = client.options("/api/v1/contexts")
-        
+
         assert "Access-Control-Allow-Origin" in response.headers
         assert "Access-Control-Allow-Methods" in response.headers
         assert "Access-Control-Allow-Headers" in response.headers
-    
+
     def test_security_headers(self, client):
         """Test security headers."""
         response = client.get("/api/v1/health")
-        
+
         # Check security headers
         assert "X-Content-Type-Options" in response.headers
         assert response.headers["X-Content-Type-Options"] == "nosniff"
-        
+
         assert "X-Frame-Options" in response.headers
         assert response.headers["X-Frame-Options"] == "DENY"
 ```
@@ -1031,11 +1031,11 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:8000']
     metrics_path: '/metrics'
-    
+
   - job_name: 'redis'
     static_configs:
       - targets: ['localhost:9121']
-      
+
   - job_name: 'postgres'
     static_configs:
       - targets: ['localhost:9187']
@@ -1068,10 +1068,10 @@ groups:
         annotations:
           summary: "High error rate on {{ $labels.endpoint }}"
           description: "Error rate is {{ $value | humanizePercentage }} for endpoint {{ $labels.endpoint }}"
-      
+
       - alert: SlowResponseTime
         expr: |
-          histogram_quantile(0.95, 
+          histogram_quantile(0.95,
             sum(rate(api_request_duration_seconds_bucket[5m])) by (endpoint, le)
           ) > 0.5
         for: 5m
@@ -1080,7 +1080,7 @@ groups:
         annotations:
           summary: "Slow response time on {{ $labels.endpoint }}"
           description: "95th percentile response time is {{ $value }}s for endpoint {{ $labels.endpoint }}"
-      
+
       - alert: LowCacheHitRate
         expr: api_cache_hit_rate < 50
         for: 10m
@@ -1128,29 +1128,29 @@ on:
 jobs:
   health-check:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install httpx pytest-asyncio
-      
+
       - name: Start API server
         run: |
           docker-compose up -d
           sleep 10  # Wait for services to start
-      
+
       - name: Run health checks
         run: |
           python scripts/api_health.py --full-scan --report --format json --output health.json
-          
+
       - name: Check health status
         run: |
           python -c "
@@ -1160,13 +1160,13 @@ jobs:
           if data['overall_success_rate'] < 95:
               raise Exception(f'API health check failed: {data[\"overall_success_rate\"]}% success rate')
           "
-      
+
       - name: Upload health report
         uses: actions/upload-artifact@v3
         with:
           name: api-health-report
           path: health.json
-      
+
       - name: Send alerts on failure
         if: failure()
         uses: 8398a7/action-slack@v3

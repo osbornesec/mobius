@@ -68,12 +68,21 @@ services:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
-      target: development  # Use development stage with dev dependencies
+      target: development # Use development stage with dev dependencies
     container_name: mobius-backend
-    command: ['uvicorn', 'app.main:app', '--host', '0.0.0.0', '--port', '8000', '--reload']
+    command: ['python', '-m', 'app.main'] # Let the app use its own host/port configuration
     ports:
-      - '8000:8000'
+      - '8000:8000' # Expose on all interfaces for container-to-container communication
     environment:
+      # Mobius-specific configuration
+      MOBIUS_HOST: '0.0.0.0' # Must bind to 0.0.0.0 inside container to be accessible
+      MOBIUS_PORT: '8000'
+      MOBIUS_ENVIRONMENT: 'development'
+      MOBIUS_DATABASE__URL: postgresql://${POSTGRES_USER:-mobius}:${POSTGRES_PASSWORD:-mobius_dev_password}@postgres:5432/${POSTGRES_DB:-mobius}
+      MOBIUS_REDIS__URL: redis://redis:6379
+      MOBIUS_SECURITY__SECRET_KEY: ${MOBIUS_SECRET_KEY:-development-secret-key-change-in-production}
+      MOBIUS_SECURITY__ALLOWED_ORIGINS: '["http://localhost:3000", "http://localhost:8000"]'
+      # Legacy environment variables (for backward compatibility)
       DATABASE_URL: postgresql://${POSTGRES_USER:-mobius}:${POSTGRES_PASSWORD:-mobius_dev_password}@postgres:5432/${POSTGRES_DB:-mobius}
       REDIS_URL: redis://redis:6379
       QDRANT_URL: http://qdrant:6333

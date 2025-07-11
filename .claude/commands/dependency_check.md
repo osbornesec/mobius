@@ -192,4 +192,4 @@ RECOMMENDED ACTIONS:
 - Consider running these checks as part of CI/CD pipeline
 - Some security scanners may require authentication tokens for enhanced scanning
 - The `--fix` flag should be used cautiously in production environments
-- Always review automatic updates before deploying to production
+- Always review automatic updates before deploying to production.

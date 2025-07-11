@@ -33,7 +33,7 @@ from pydantic import BaseModel
 # Core abstraction layer
 class LLMProvider(ABC):
     """Base interface for all LLM providers"""
-    
+
     @abstractmethod
     async def complete(
         self,
@@ -43,7 +43,7 @@ class LLMProvider(ABC):
     ) -> CompletionResponse:
         """Generate completion from messages"""
         pass
-    
+
     @abstractmethod
     async def stream_complete(
         self,
@@ -53,7 +53,7 @@ class LLMProvider(ABC):
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion chunks"""
         pass
-    
+
     @abstractmethod
     async def embed(
         self,
@@ -74,7 +74,7 @@ from enum import Enum
 class ProviderType(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
-    
+
 class RetryConfig(BaseModel):
     max_retries: int = 3
     initial_delay: float = 1.0
@@ -89,7 +89,7 @@ class ProviderConfig(BaseModel):
     timeout: float = 30.0
     max_concurrent_requests: int = 10
     retry_config: RetryConfig = Field(default_factory=RetryConfig)
-    
+
 class LLMConfig(BaseModel):
     """Global LLM configuration"""
     providers: Dict[str, ProviderConfig]
@@ -110,11 +110,11 @@ from contextlib import asynccontextmanager
 
 class LLMProviderFactory:
     """Factory for creating and managing LLM provider instances"""
-    
+
     _providers: Dict[ProviderType, Type[LLMProvider]] = {}
     _instances: Dict[str, LLMProvider] = {}
     _locks: Dict[str, asyncio.Lock] = {}
-    
+
     @classmethod
     def register_provider(
         cls,
@@ -123,7 +123,7 @@ class LLMProviderFactory:
     ) -> None:
         """Register a new provider implementation"""
         cls._providers[provider_type] = provider_class
-    
+
     @classmethod
     async def get_provider(
         cls,
@@ -134,7 +134,7 @@ class LLMProviderFactory:
         if provider_name not in cls._instances:
             if provider_name not in cls._locks:
                 cls._locks[provider_name] = asyncio.Lock()
-                
+
             async with cls._locks[provider_name]:
                 if provider_name not in cls._instances:
                     provider_config = config.providers[provider_name]
@@ -142,7 +142,7 @@ class LLMProviderFactory:
                     cls._instances[provider_name] = await provider_class.create(
                         provider_config
                     )
-                    
+
         return cls._instances[provider_name]
 ```
 
@@ -168,7 +168,7 @@ from tenacity import (
 
 class OpenAIProvider(LLMProvider):
     """OpenAI LLM provider implementation"""
-    
+
     def __init__(self, config: ProviderConfig):
         self.config = config
         self.client = AsyncOpenAI(
@@ -179,21 +179,21 @@ class OpenAIProvider(LLMProvider):
         )
         self._semaphore = asyncio.Semaphore(config.max_concurrent_requests)
         self._encoder = tiktoken.get_encoding("cl100k_base")
-    
+
     @classmethod
     async def create(cls, config: ProviderConfig) -> "OpenAIProvider":
         """Factory method for async initialization"""
         instance = cls(config)
         await instance._verify_connection()
         return instance
-    
+
     async def _verify_connection(self) -> None:
         """Verify API connection on initialization"""
         try:
             await self.client.models.list()
         except Exception as e:
             raise ConnectionError(f"Failed to connect to OpenAI API: {e}")
-    
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=60),
@@ -217,7 +217,7 @@ class OpenAIProvider(LLMProvider):
                     max_tokens=max_tokens,
                     **kwargs
                 )
-                
+
                 return CompletionResponse(
                     content=response.choices[0].message.content,
                     model=response.model,
@@ -229,7 +229,7 @@ class OpenAIProvider(LLMProvider):
                     provider="openai",
                     raw_response=response.model_dump()
                 )
-                
+
             except openai.APIError as e:
                 raise LLMProviderError(
                     f"OpenAI API error: {e}",
@@ -237,7 +237,7 @@ class OpenAIProvider(LLMProvider):
                     error_code=e.code,
                     retry_after=getattr(e, "retry_after", None)
                 )
-    
+
     async def stream_complete(
         self,
         messages: List[Message],
@@ -255,7 +255,7 @@ class OpenAIProvider(LLMProvider):
                     stream=True,
                     **kwargs
                 )
-                
+
                 async for chunk in stream:
                     if chunk.choices[0].delta.content:
                         yield StreamChunk(
@@ -264,13 +264,13 @@ class OpenAIProvider(LLMProvider):
                             model=model,
                             finish_reason=chunk.choices[0].finish_reason
                         )
-                        
+
             except openai.APIError as e:
                 raise LLMProviderError(
                     f"OpenAI streaming error: {e}",
                     provider="openai"
                 )
-    
+
     async def embed(
         self,
         texts: List[str],
@@ -282,7 +282,7 @@ class OpenAIProvider(LLMProvider):
                 # OpenAI recommends max 2048 embedding inputs per request
                 batch_size = 100
                 embeddings = []
-                
+
                 for i in range(0, len(texts), batch_size):
                     batch = texts[i:i + batch_size]
                     response = await self.client.embeddings.create(
@@ -292,9 +292,9 @@ class OpenAIProvider(LLMProvider):
                     embeddings.extend(
                         [e.embedding for e in response.data]
                     )
-                    
+
                 return embeddings
-                
+
             except openai.APIError as e:
                 raise LLMProviderError(
                     f"OpenAI embedding error: {e}",
@@ -371,7 +371,7 @@ from tenacity import (
 
 class AnthropicProvider(LLMProvider):
     """Anthropic (Claude) LLM provider implementation"""
-    
+
     def __init__(self, config: ProviderConfig):
         self.config = config
         self.client = AsyncAnthropic(
@@ -381,14 +381,14 @@ class AnthropicProvider(LLMProvider):
             max_retries=0  # Handle retries ourselves
         )
         self._semaphore = asyncio.Semaphore(config.max_concurrent_requests)
-    
+
     @classmethod
     async def create(cls, config: ProviderConfig) -> "AnthropicProvider":
         """Factory method for async initialization"""
         instance = cls(config)
         await instance._verify_connection()
         return instance
-    
+
     async def _verify_connection(self) -> None:
         """Verify API connection"""
         try:
@@ -402,7 +402,7 @@ class AnthropicProvider(LLMProvider):
             raise ConnectionError("Invalid Anthropic API key")
         except Exception as e:
             raise ConnectionError(f"Failed to connect to Anthropic API: {e}")
-    
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=60),
@@ -421,7 +421,7 @@ class AnthropicProvider(LLMProvider):
             try:
                 # Convert messages to Anthropic format
                 anthropic_messages = self._convert_messages(messages)
-                
+
                 response = await self.client.messages.create(
                     model=model,
                     messages=anthropic_messages,
@@ -429,7 +429,7 @@ class AnthropicProvider(LLMProvider):
                     max_tokens=max_tokens,
                     **kwargs
                 )
-                
+
                 return CompletionResponse(
                     content=response.content[0].text,
                     model=response.model,
@@ -437,14 +437,14 @@ class AnthropicProvider(LLMProvider):
                         prompt_tokens=response.usage.input_tokens,
                         completion_tokens=response.usage.output_tokens,
                         total_tokens=(
-                            response.usage.input_tokens + 
+                            response.usage.input_tokens +
                             response.usage.output_tokens
                         )
                     ),
                     provider="anthropic",
                     raw_response=response.model_dump()
                 )
-                
+
             except anthropic.APIError as e:
                 raise LLMProviderError(
                     f"Anthropic API error: {e}",
@@ -452,7 +452,7 @@ class AnthropicProvider(LLMProvider):
                     error_code=getattr(e, "status_code", None),
                     retry_after=getattr(e, "retry_after", None)
                 )
-    
+
     async def stream_complete(
         self,
         messages: List[Message],
@@ -465,7 +465,7 @@ class AnthropicProvider(LLMProvider):
         async with self._semaphore:
             try:
                 anthropic_messages = self._convert_messages(messages)
-                
+
                 async with self.client.messages.stream(
                     model=model,
                     messages=anthropic_messages,
@@ -480,7 +480,7 @@ class AnthropicProvider(LLMProvider):
                             model=model,
                             finish_reason=None
                         )
-                    
+
                     # Get final message for metadata
                     final_message = await stream.get_final_message()
                     if final_message.stop_reason:
@@ -490,13 +490,13 @@ class AnthropicProvider(LLMProvider):
                             model=model,
                             finish_reason=final_message.stop_reason
                         )
-                        
+
             except anthropic.APIError as e:
                 raise LLMProviderError(
                     f"Anthropic streaming error: {e}",
                     provider="anthropic"
                 )
-    
+
     async def embed(
         self,
         texts: List[str],
@@ -507,12 +507,12 @@ class AnthropicProvider(LLMProvider):
             "Anthropic does not provide embedding models. "
             "Use OpenAI or another provider for embeddings."
         )
-    
+
     def _convert_messages(self, messages: List[Message]) -> List[Dict]:
         """Convert generic messages to Anthropic format"""
         # Anthropic requires alternating user/assistant messages
         anthropic_messages = []
-        
+
         for msg in messages:
             if msg.role == "system":
                 # Anthropic doesn't have system role - prepend to first user message
@@ -530,7 +530,7 @@ class AnthropicProvider(LLMProvider):
                     "role": msg.role,
                     "content": msg.content
                 })
-                
+
         return anthropic_messages
 ```
 
@@ -594,7 +594,7 @@ class Usage(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
-    
+
     @property
     def estimated_cost(self) -> float:
         """Calculate estimated cost based on model pricing"""
@@ -615,7 +615,7 @@ class StreamChunk(BaseModel):
     provider: str
     model: str
     finish_reason: Optional[str] = None
-    
+
 class LLMProviderError(Exception):
     """Base exception for LLM provider errors"""
     def __init__(
@@ -642,13 +642,13 @@ from contextlib import asynccontextmanager
 
 class LLMManager:
     """Manages LLM providers with fallback and load balancing"""
-    
+
     def __init__(self, config: LLMConfig):
         self.config = config
         self._provider_factory = LLMProviderFactory()
         self._cache = ResponseCache(ttl=config.cache_ttl)
         self._metrics = MetricsCollector()
-    
+
     async def initialize(self) -> None:
         """Initialize all configured providers"""
         # Register provider implementations
@@ -660,7 +660,7 @@ class LLMManager:
             ProviderType.ANTHROPIC,
             AnthropicProvider
         )
-        
+
         # Pre-initialize providers
         for provider_name in self.config.providers:
             try:
@@ -672,7 +672,7 @@ class LLMManager:
                 logger.error(
                     f"Failed to initialize provider {provider_name}: {e}"
                 )
-    
+
     async def complete(
         self,
         messages: List[Message],
@@ -682,17 +682,17 @@ class LLMManager:
     ) -> CompletionResponse:
         """Generate completion with automatic fallback"""
         start_time = time.time()
-        
+
         # Check cache first
         cache_key = self._generate_cache_key(messages, model, provider, kwargs)
         cached_response = await self._cache.get(cache_key)
         if cached_response:
             self._metrics.record_cache_hit()
             return cached_response
-        
+
         # Determine provider order
         providers = self._get_provider_order(provider)
-        
+
         last_error = None
         for provider_name in providers:
             try:
@@ -700,16 +700,16 @@ class LLMManager:
                     provider_name,
                     self.config
                 )
-                
+
                 # Use provider-specific model if not specified
                 actual_model = model or self._get_default_model(provider_name)
-                
+
                 response = await provider_instance.complete(
                     messages,
                     actual_model,
                     **kwargs
                 )
-                
+
                 # Record metrics
                 response.response_time_ms = (time.time() - start_time) * 1000
                 self._metrics.record_request(
@@ -718,30 +718,30 @@ class LLMManager:
                     response_time=response.response_time_ms,
                     tokens=response.usage.total_tokens
                 )
-                
+
                 # Cache successful response
                 await self._cache.set(cache_key, response)
-                
+
                 return response
-                
+
             except LLMProviderError as e:
                 last_error = e
                 logger.warning(
                     f"Provider {provider_name} failed: {e}. "
                     f"Trying next provider..."
                 )
-                
+
                 # Handle rate limits
                 if e.retry_after:
                     await asyncio.sleep(e.retry_after)
-                    
+
         # All providers failed
         raise LLMProviderError(
             f"All providers failed. Last error: {last_error}",
             provider="all",
             error_code="all_providers_failed"
         )
-    
+
     @asynccontextmanager
     async def stream_complete(
         self,
@@ -752,36 +752,36 @@ class LLMManager:
     ) -> AsyncIterator[StreamChunk]:
         """Stream completion with automatic fallback"""
         providers = self._get_provider_order(provider)
-        
+
         for provider_name in providers:
             try:
                 provider_instance = await self._provider_factory.get_provider(
                     provider_name,
                     self.config
                 )
-                
+
                 actual_model = model or self._get_default_model(provider_name)
-                
+
                 async for chunk in provider_instance.stream_complete(
                     messages,
                     actual_model,
                     **kwargs
                 ):
                     yield chunk
-                    
+
                 return  # Success
-                
+
             except LLMProviderError as e:
                 logger.warning(
                     f"Streaming provider {provider_name} failed: {e}"
                 )
                 continue
-                
+
         raise LLMProviderError(
             "All streaming providers failed",
             provider="all"
         )
-    
+
     def _get_provider_order(self, preferred: Optional[str]) -> List[str]:
         """Get provider order with fallbacks"""
         if preferred and preferred in self.config.providers:
@@ -795,7 +795,7 @@ class LLMManager:
             return [
                 self.config.default_provider
             ] + self.config.fallback_providers
-    
+
     def _get_default_model(self, provider: str) -> str:
         """Get default model for provider"""
         provider_config = self.config.providers[provider]
@@ -822,12 +822,12 @@ from contextlib import asynccontextmanager
 
 class ConnectionPool:
     """HTTP connection pool for LLM providers"""
-    
+
     def __init__(self, max_connections: int = 100):
         self._clients: Dict[str, httpx.AsyncClient] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
         self._max_connections = max_connections
-    
+
     @asynccontextmanager
     async def get_client(
         self,
@@ -839,7 +839,7 @@ class ConnectionPool:
         if provider not in self._clients:
             if provider not in self._locks:
                 self._locks[provider] = asyncio.Lock()
-                
+
             async with self._locks[provider]:
                 if provider not in self._clients:
                     self._clients[provider] = httpx.AsyncClient(
@@ -853,9 +853,9 @@ class ConnectionPool:
                             "User-Agent": "Mobius-Context-Engine/1.0"
                         }
                     )
-        
+
         yield self._clients[provider]
-    
+
     async def close_all(self) -> None:
         """Close all HTTP clients"""
         for client in self._clients.values():
@@ -879,7 +879,7 @@ class CircuitState(Enum):
 
 class CircuitBreaker:
     """Circuit breaker for provider resilience"""
-    
+
     def __init__(
         self,
         failure_threshold: int = 5,
@@ -890,15 +890,15 @@ class CircuitBreaker:
         self._failure_counts: Dict[str, int] = {}
         self._success_counts: Dict[str, int] = {}
         self._last_failure_time: Dict[str, float] = {}
-        
+
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.success_threshold = success_threshold
-    
+
     def is_available(self, provider: str) -> bool:
         """Check if provider is available"""
         state = self._states.get(provider, CircuitState.CLOSED)
-        
+
         if state == CircuitState.CLOSED:
             return True
         elif state == CircuitState.OPEN:
@@ -909,11 +909,11 @@ class CircuitBreaker:
             return False
         else:  # HALF_OPEN
             return True
-    
+
     def record_success(self, provider: str) -> None:
         """Record successful request"""
         state = self._states.get(provider, CircuitState.CLOSED)
-        
+
         if state == CircuitState.HALF_OPEN:
             self._success_counts[provider] = self._success_counts.get(provider, 0) + 1
             if self._success_counts[provider] >= self.success_threshold:
@@ -924,11 +924,11 @@ class CircuitBreaker:
         elif state == CircuitState.CLOSED:
             # Reset failure count on success
             self._failure_counts[provider] = 0
-    
+
     def record_failure(self, provider: str) -> None:
         """Record failed request"""
         state = self._states.get(provider, CircuitState.CLOSED)
-        
+
         if state == CircuitState.CLOSED:
             self._failure_counts[provider] = self._failure_counts.get(provider, 0) + 1
             if self._failure_counts[provider] >= self.failure_threshold:
@@ -959,29 +959,29 @@ from contextlib import asynccontextmanager
 
 class ResponseCache:
     """LRU cache for LLM responses"""
-    
+
     def __init__(self, ttl: int = 3600, max_size: int = 10000):
         self.ttl = ttl
         self.max_size = max_size
         self._redis: Optional[redis.Redis] = None
-    
+
     async def initialize(self, redis_url: str = "redis://localhost:6379") -> None:
         """Initialize Redis connection"""
         self._redis = redis.from_url(redis_url, decode_responses=True)
         await self._redis.ping()
-    
+
     def _generate_key(self, data: Dict[str, Any]) -> str:
         """Generate cache key from request data"""
         # Sort keys for consistent hashing
         sorted_data = json.dumps(data, sort_keys=True)
         hash_object = hashlib.sha256(sorted_data.encode())
         return f"llm_cache:{hash_object.hexdigest()}"
-    
+
     async def get(self, key: str) -> Optional[CompletionResponse]:
         """Get cached response"""
         if not self._redis:
             return None
-            
+
         try:
             cached_data = await self._redis.get(key)
             if cached_data:
@@ -989,21 +989,21 @@ class ResponseCache:
                 return CompletionResponse(**data)
         except Exception as e:
             logger.warning(f"Cache get error: {e}")
-            
+
         return None
-    
+
     async def set(self, key: str, response: CompletionResponse) -> None:
         """Cache response with TTL"""
         if not self._redis:
             return
-            
+
         try:
             # Check cache size
             cache_size = await self._redis.dbsize()
             if cache_size >= self.max_size:
                 # Implement LRU eviction
                 await self._evict_oldest()
-            
+
             # Store with TTL
             await self._redis.setex(
                 key,
@@ -1012,7 +1012,7 @@ class ResponseCache:
             )
         except Exception as e:
             logger.warning(f"Cache set error: {e}")
-    
+
     async def _evict_oldest(self) -> None:
         """Evict oldest entries when cache is full"""
         # Simple implementation - delete 10% of keys
@@ -1033,7 +1033,7 @@ from collections import defaultdict
 
 class BatchProcessor:
     """Batch multiple requests for efficiency"""
-    
+
     def __init__(
         self,
         batch_size: int = 10,
@@ -1043,7 +1043,7 @@ class BatchProcessor:
         self.batch_timeout = batch_timeout
         self._pending_requests: Dict[str, List[Tuple[Any, asyncio.Future]]] = defaultdict(list)
         self._batch_locks: Dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-    
+
     async def add_request(
         self,
         provider: str,
@@ -1051,43 +1051,43 @@ class BatchProcessor:
     ) -> Any:
         """Add request to batch queue"""
         future = asyncio.Future()
-        
+
         async with self._batch_locks[provider]:
             self._pending_requests[provider].append((request, future))
-            
+
             # Check if batch is ready
             if len(self._pending_requests[provider]) >= self.batch_size:
                 await self._process_batch(provider)
             else:
                 # Schedule timeout
                 asyncio.create_task(self._schedule_batch(provider))
-        
+
         return await future
-    
+
     async def _schedule_batch(self, provider: str) -> None:
         """Process batch after timeout"""
         await asyncio.sleep(self.batch_timeout)
         async with self._batch_locks[provider]:
             if self._pending_requests[provider]:
                 await self._process_batch(provider)
-    
+
     async def _process_batch(self, provider: str) -> None:
         """Process accumulated batch"""
         batch = self._pending_requests[provider]
         self._pending_requests[provider] = []
-        
+
         if not batch:
             return
-        
+
         try:
             # Process batch (implementation depends on provider)
             requests = [req for req, _ in batch]
             responses = await self._execute_batch(provider, requests)
-            
+
             # Resolve futures
             for (_, future), response in zip(batch, responses):
                 future.set_result(response)
-                
+
         except Exception as e:
             # Reject all futures in batch
             for _, future in batch:
@@ -1112,7 +1112,7 @@ T = TypeVar('T')
 
 class RetryStrategy:
     """Configurable retry strategy for LLM requests"""
-    
+
     def __init__(
         self,
         max_attempts: int = 3,
@@ -1128,26 +1128,26 @@ class RetryStrategy:
         self.exponential_base = exponential_base
         self.jitter = jitter
         self.retry_on = retry_on or (Exception,)
-    
+
     def calculate_delay(self, attempt: int) -> float:
         """Calculate delay for retry attempt"""
         delay = min(
             self.initial_delay * (self.exponential_base ** (attempt - 1)),
             self.max_delay
         )
-        
+
         if self.jitter:
             # Add random jitter (±25%)
             jitter_amount = delay * 0.25
             delay += random.uniform(-jitter_amount, jitter_amount)
-            
+
         return max(0, delay)
-    
+
     def should_retry(self, exception: Exception, attempt: int) -> bool:
         """Determine if should retry based on exception"""
         if attempt >= self.max_attempts:
             return False
-            
+
         # Check if exception type should be retried
         return isinstance(exception, self.retry_on)
 
@@ -1157,16 +1157,16 @@ def with_retry(strategy: RetryStrategy):
         @wraps(func)
         async def wrapper(*args, **kwargs) -> T:
             last_exception = None
-            
+
             for attempt in range(1, strategy.max_attempts + 1):
                 try:
                     return await func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e
-                    
+
                     if not strategy.should_retry(e, attempt):
                         raise
-                    
+
                     if attempt < strategy.max_attempts:
                         delay = strategy.calculate_delay(attempt)
                         logger.warning(
@@ -1174,10 +1174,10 @@ def with_retry(strategy: RetryStrategy):
                             f"Retrying in {delay:.2f}s..."
                         )
                         await asyncio.sleep(delay)
-            
+
             # All attempts failed
             raise last_exception
-            
+
         return wrapper
     return decorator
 ```
@@ -1200,12 +1200,12 @@ class ErrorCategory(Enum):
 
 class ErrorClassifier:
     """Classify and handle LLM provider errors"""
-    
+
     @staticmethod
     def classify_error(exception: Exception) -> ErrorCategory:
         """Classify exception into error category"""
         error_msg = str(exception).lower()
-        
+
         if any(term in error_msg for term in ['rate limit', '429', 'too many requests']):
             return ErrorCategory.RATE_LIMIT
         elif any(term in error_msg for term in ['unauthorized', '401', 'invalid api key']):
@@ -1220,7 +1220,7 @@ class ErrorClassifier:
             return ErrorCategory.NETWORK_ERROR
         else:
             return ErrorCategory.UNKNOWN
-    
+
     @staticmethod
     def get_retry_strategy(category: ErrorCategory) -> Optional[RetryStrategy]:
         """Get appropriate retry strategy for error category"""
@@ -1243,7 +1243,7 @@ class ErrorClassifier:
                 initial_delay=0.1
             )
         }
-        
+
         return strategies.get(category)
 ```
 
@@ -1263,36 +1263,36 @@ import json
 
 class SecureKeyManager:
     """Secure storage and retrieval of API keys"""
-    
+
     def __init__(self, master_key: Optional[str] = None):
         # Use environment variable or provided key
         key = master_key or os.environ.get("MOBIUS_MASTER_KEY")
         if not key:
             raise ValueError("Master key not provided")
-            
+
         self._fernet = Fernet(key.encode() if isinstance(key, str) else key)
         self._keys: Dict[str, str] = {}
-    
+
     def load_from_env(self) -> None:
         """Load API keys from environment variables"""
         # OpenAI
         if openai_key := os.environ.get("OPENAI_API_KEY"):
             self.set_key("openai", openai_key)
-            
+
         # Anthropic
         if anthropic_key := os.environ.get("ANTHROPIC_API_KEY"):
             self.set_key("anthropic", anthropic_key)
-    
+
     def set_key(self, provider: str, api_key: str) -> None:
         """Securely store an API key"""
         encrypted = self._fernet.encrypt(api_key.encode())
         self._keys[provider] = base64.b64encode(encrypted).decode()
-    
+
     def get_key(self, provider: str) -> Optional[str]:
         """Retrieve and decrypt an API key"""
         if provider not in self._keys:
             return None
-            
+
         try:
             encrypted = base64.b64decode(self._keys[provider])
             decrypted = self._fernet.decrypt(encrypted)
@@ -1311,7 +1311,7 @@ from typing import Dict, Any, List
 
 class RequestSanitizer:
     """Sanitize requests and responses for security"""
-    
+
     # Patterns for sensitive data
     PATTERNS = {
         'api_key': re.compile(r'(api[_-]?key|apikey)[\s:=]*(\S+)', re.IGNORECASE),
@@ -1321,12 +1321,12 @@ class RequestSanitizer:
         'ssn': re.compile(r'\b\d{3}-\d{2}-\d{4}\b'),
         'email': re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
     }
-    
+
     @classmethod
     def sanitize_text(cls, text: str, mask: str = "[REDACTED]") -> str:
         """Sanitize sensitive data in text"""
         sanitized = text
-        
+
         for pattern_name, pattern in cls.PATTERNS.items():
             if pattern_name == 'email':
                 # Partial masking for emails
@@ -1336,14 +1336,14 @@ class RequestSanitizer:
                 )
             else:
                 sanitized = pattern.sub(mask, sanitized)
-                
+
         return sanitized
-    
+
     @classmethod
     def sanitize_dict(cls, data: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively sanitize dictionary"""
         sanitized = {}
-        
+
         for key, value in data.items():
             if isinstance(value, str):
                 sanitized[key] = cls.sanitize_text(value)
@@ -1356,7 +1356,7 @@ class RequestSanitizer:
                 ]
             else:
                 sanitized[key] = value
-                
+
         return sanitized
 ```
 
@@ -1385,19 +1385,19 @@ class ProviderMetrics:
     total_cost: float = 0.0
     response_times: List[float] = field(default_factory=list)
     error_counts: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    
+
     @property
     def success_rate(self) -> float:
         if self.total_requests == 0:
             return 0.0
         return self.successful_requests / self.total_requests
-    
+
     @property
     def average_response_time(self) -> float:
         if not self.response_times:
             return 0.0
         return sum(self.response_times) / len(self.response_times)
-    
+
     @property
     def p95_response_time(self) -> float:
         if not self.response_times:
@@ -1408,13 +1408,13 @@ class ProviderMetrics:
 
 class MetricsCollector:
     """Collect and aggregate LLM metrics"""
-    
+
     def __init__(self, window_size: int = 3600):  # 1 hour window
         self.window_size = window_size
         self._metrics: Dict[str, ProviderMetrics] = defaultdict(ProviderMetrics)
         self._time_series: Dict[str, List[Tuple[float, Dict]]] = defaultdict(list)
         self._lock = asyncio.Lock()
-    
+
     async def record_request(
         self,
         provider: str,
@@ -1429,7 +1429,7 @@ class MetricsCollector:
         async with self._lock:
             metrics = self._metrics[provider]
             metrics.total_requests += 1
-            
+
             if success:
                 metrics.successful_requests += 1
                 metrics.response_times.append(response_time)
@@ -1439,7 +1439,7 @@ class MetricsCollector:
                 metrics.failed_requests += 1
                 if error:
                     metrics.error_counts[error] += 1
-            
+
             # Add to time series
             timestamp = time.time()
             self._time_series[provider].append((
@@ -1453,27 +1453,27 @@ class MetricsCollector:
                     "cost": cost
                 }
             ))
-            
+
             # Clean old data
             await self._cleanup_old_data(provider)
-    
+
     async def get_metrics(self, provider: Optional[str] = None) -> Dict[str, ProviderMetrics]:
         """Get current metrics"""
         async with self._lock:
             if provider:
                 return {provider: self._metrics[provider]}
             return dict(self._metrics)
-    
+
     async def _cleanup_old_data(self, provider: str) -> None:
         """Remove data outside time window"""
         cutoff = time.time() - self.window_size
-        
+
         # Clean time series
         self._time_series[provider] = [
             (ts, data) for ts, data in self._time_series[provider]
             if ts > cutoff
         ]
-        
+
         # Limit response times list
         metrics = self._metrics[provider]
         if len(metrics.response_times) > 1000:
@@ -1493,7 +1493,7 @@ from pathlib import Path
 
 class LLMRequestLogger:
     """Structured logging for LLM requests/responses"""
-    
+
     def __init__(
         self,
         log_dir: str = "logs/llm",
@@ -1504,20 +1504,20 @@ class LLMRequestLogger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.max_file_size = max_file_size
         self.retention_days = retention_days
-        
+
         # Setup structured logger
         self.logger = self._setup_logger()
-    
+
     def _setup_logger(self) -> logging.Logger:
         """Setup JSON structured logger"""
         logger = logging.getLogger("llm_requests")
         logger.setLevel(logging.INFO)
-        
+
         # JSON formatter
         formatter = logging.Formatter(
             '%(message)s'
         )
-        
+
         # Rotating file handler
         from logging.handlers import RotatingFileHandler
         handler = RotatingFileHandler(
@@ -1526,10 +1526,10 @@ class LLMRequestLogger:
             backupCount=5
         )
         handler.setFormatter(formatter)
-        
+
         logger.addHandler(handler)
         return logger
-    
+
     async def log_request(
         self,
         request_id: str,
@@ -1555,9 +1555,9 @@ class LLMRequestLogger:
                 for msg in messages
             ]
         }
-        
+
         self.logger.info(json.dumps(log_entry))
-    
+
     async def log_response(
         self,
         request_id: str,
@@ -1579,7 +1579,7 @@ class LLMRequestLogger:
             "error": str(error) if error else None,
             "error_type": type(error).__name__ if error else None
         }
-        
+
         self.logger.info(json.dumps(log_entry))
 ```
 
@@ -1597,7 +1597,7 @@ import random
 
 class MockLLMProvider(LLMProvider):
     """Mock provider for testing"""
-    
+
     def __init__(
         self,
         response_delay: float = 0.1,
@@ -1610,11 +1610,11 @@ class MockLLMProvider(LLMProvider):
             "default": "This is a mock response."
         }
         self.request_count = 0
-    
+
     @classmethod
     async def create(cls, config: ProviderConfig) -> "MockLLMProvider":
         return cls()
-    
+
     async def complete(
         self,
         messages: List[Message],
@@ -1623,10 +1623,10 @@ class MockLLMProvider(LLMProvider):
     ) -> CompletionResponse:
         """Generate mock completion"""
         self.request_count += 1
-        
+
         # Simulate delay
         await asyncio.sleep(self.response_delay)
-        
+
         # Simulate errors
         if random.random() < self.error_rate:
             raise LLMProviderError(
@@ -1634,17 +1634,17 @@ class MockLLMProvider(LLMProvider):
                 provider="mock",
                 error_code="mock_error"
             )
-        
+
         # Generate response
         content = self.model_responses.get(
             model,
             self.model_responses["default"]
         )
-        
+
         # Calculate mock tokens
         prompt_tokens = sum(len(msg.content.split()) * 1.3 for msg in messages)
         completion_tokens = len(content.split()) * 1.3
-        
+
         return CompletionResponse(
             content=content,
             model=model,
@@ -1656,7 +1656,7 @@ class MockLLMProvider(LLMProvider):
             ),
             response_time_ms=self.response_delay * 1000
         )
-    
+
     async def stream_complete(
         self,
         messages: List[Message],
@@ -1665,12 +1665,12 @@ class MockLLMProvider(LLMProvider):
     ) -> AsyncIterator[StreamChunk]:
         """Stream mock completion"""
         await asyncio.sleep(self.response_delay)
-        
+
         content = self.model_responses.get(
             model,
             self.model_responses["default"]
         )
-        
+
         # Stream word by word
         words = content.split()
         for i, word in enumerate(words):
@@ -1681,7 +1681,7 @@ class MockLLMProvider(LLMProvider):
                 finish_reason="stop" if i == len(words) - 1 else None
             )
             await asyncio.sleep(0.01)  # Small delay between chunks
-    
+
     async def embed(
         self,
         texts: List[str],
@@ -1689,7 +1689,7 @@ class MockLLMProvider(LLMProvider):
     ) -> List[List[float]]:
         """Generate mock embeddings"""
         await asyncio.sleep(self.response_delay)
-        
+
         # Generate random embeddings
         return [
             [random.random() for _ in range(1536)]
@@ -1722,9 +1722,9 @@ async def llm_manager():
         default_provider="mock_openai",
         fallback_providers=["mock_anthropic"]
     )
-    
+
     manager = LLMManager(config)
-    
+
     # Register mock providers
     manager._provider_factory.register_provider(
         ProviderType.OPENAI,
@@ -1734,7 +1734,7 @@ async def llm_manager():
         ProviderType.ANTHROPIC,
         MockLLMProvider
     )
-    
+
     await manager.initialize()
     return manager
 
@@ -1744,9 +1744,9 @@ async def test_basic_completion(llm_manager):
     messages = [
         Message(role=MessageRole.USER, content="Hello, world!")
     ]
-    
+
     response = await llm_manager.complete(messages)
-    
+
     assert response.content
     assert response.provider == "mock_openai"
     assert response.usage.total_tokens > 0
@@ -1760,13 +1760,13 @@ async def test_fallback_on_error(llm_manager):
         llm_manager.config
     )
     primary.error_rate = 1.0  # Always fail
-    
+
     messages = [
         Message(role=MessageRole.USER, content="Test fallback")
     ]
-    
+
     response = await llm_manager.complete(messages)
-    
+
     assert response.provider == "mock_anthropic"  # Fallback provider
 
 @pytest.mark.asyncio
@@ -1775,12 +1775,12 @@ async def test_streaming(llm_manager):
     messages = [
         Message(role=MessageRole.USER, content="Stream test")
     ]
-    
+
     chunks = []
     async with llm_manager.stream_complete(messages) as stream:
         async for chunk in stream:
             chunks.append(chunk)
-    
+
     assert len(chunks) > 0
     assert any(chunk.finish_reason == "stop" for chunk in chunks)
 
@@ -1791,15 +1791,15 @@ async def test_rate_limiting(llm_manager):
         Message(role=MessageRole.USER, content=f"Request {i}")
         for i in range(20)
     ]
-    
+
     # Send concurrent requests
     tasks = [
         llm_manager.complete([msg])
         for msg in messages
     ]
-    
+
     responses = await asyncio.gather(*tasks)
-    
+
     assert len(responses) == 20
     assert all(r.content for r in responses)
 
@@ -1809,13 +1809,13 @@ async def test_caching(llm_manager):
     messages = [
         Message(role=MessageRole.USER, content="Cached request")
     ]
-    
+
     # First request
     response1 = await llm_manager.complete(messages)
-    
+
     # Second request (should be cached)
     response2 = await llm_manager.complete(messages)
-    
+
     assert response1.content == response2.content
     assert response2.response_time_ms < response1.response_time_ms  # Cached is faster
 ```
@@ -1846,7 +1846,7 @@ async def complete(
             Message(role=msg.role, content=msg.content)
             for msg in request.messages
         ]
-        
+
         response = await llm_manager.complete(
             messages=messages,
             model=request.model,
@@ -1854,9 +1854,9 @@ async def complete(
             temperature=request.temperature,
             max_tokens=request.max_tokens
         )
-        
+
         return response
-        
+
     except LLMProviderError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1881,7 +1881,7 @@ async def stream_complete(
                 Message(role=msg.role, content=msg.content)
                 for msg in request.messages
             ]
-            
+
             async with llm_manager.stream_complete(
                 messages=messages,
                 model=request.model,
@@ -1890,9 +1890,9 @@ async def stream_complete(
             ) as stream:
                 async for chunk in stream:
                     yield f"data: {chunk.model_dump_json()}\n\n"
-                    
+
             yield "data: [DONE]\n\n"
-            
+
         except Exception as e:
             error_chunk = StreamChunk(
                 content="",
@@ -1901,7 +1901,7 @@ async def stream_complete(
                 finish_reason="error"
             )
             yield f"data: {error_chunk.model_dump_json()}\n\n"
-    
+
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
@@ -1923,12 +1923,12 @@ async def create_embeddings(
             "openai",
             llm_manager.config
         )
-        
+
         embeddings = await provider.embed(
             texts=request.texts,
             model=request.model or "text-embedding-3-small"
         )
-        
+
         return EmbeddingResponse(
             embeddings=embeddings,
             model=request.model or "text-embedding-3-small",
@@ -1938,7 +1938,7 @@ async def create_embeddings(
                 total_tokens=sum(len(text.split()) for text in request.texts)
             )
         )
-        
+
     except Exception as e:
         logger.error(f"Embedding error: {e}")
         raise HTTPException(

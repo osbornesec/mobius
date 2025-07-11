@@ -68,17 +68,17 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers to automatically update timestamps
-CREATE TRIGGER update_embeddings_updated_at 
-    BEFORE UPDATE ON embeddings 
+CREATE TRIGGER update_embeddings_updated_at
+    BEFORE UPDATE ON embeddings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_files_updated_at 
-    BEFORE UPDATE ON files 
+CREATE TRIGGER update_files_updated_at
+    BEFORE UPDATE ON files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert initial data (optional)
-INSERT INTO files (file_path, file_type, file_size, content_hash, language, project_id) 
-VALUES 
+INSERT INTO files (file_path, file_type, file_size, content_hash, language, project_id)
+VALUES
     ('README.md', 'markdown', 1024, 'sample_hash_1', 'markdown', 'mobius'),
     ('main.py', 'python', 2048, 'sample_hash_2', 'python', 'mobius')
 ON CONFLICT (file_path) DO NOTHING;

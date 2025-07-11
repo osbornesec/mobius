@@ -1,18 +1,42 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import useAuthStore from '@/store/authStore';
+import { getTimeoutForEndpoint, RETRY_CONFIG } from './timeouts';
+import { isRetryableError, getRetryState, clearRetryState, sleep, calculateBackoffDelay, enhanceErrorMessage, formatRetryMessage } from './retry';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
-const API_TIMEOUT = 30000; // 30 seconds
+const IS_DEVELOPMENT = import.meta.env.DEV;
 
-// Create axios instance
+// Custom error class for API errors
+export class ApiRequestError extends Error {
+  code: string;
+  status?: number;
+  originalError?: unknown;
+
+  constructor(message: string, code: string, status?: number, originalError?: unknown) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.code = code;
+    this.status = status;
+    this.originalError = originalError;
+
+    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ApiRequestError);
+    }
+  }
+}
+
+// Create axios instance with dynamic timeout
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Add AbortController support for better cancellation
+export const createAbortController = () => new AbortController();
 
 // Request interceptor
 apiClient.interceptors.request.use(
@@ -22,6 +46,19 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Set dynamic timeout based on endpoint
+    if (!config.timeout) {
+      const endpoint = config.url || '';
+      const method = config.method?.toUpperCase() || 'GET';
+      config.timeout = getTimeoutForEndpoint(endpoint, method);
+    }
+    
+    // Add request timing in development
+    if (IS_DEVELOPMENT) {
+      config.metadata = { startTime: Date.now() };
+    }
+    
     return config;
   },
   (error) => {
@@ -31,26 +68,68 @@ apiClient.interceptors.request.use(
 
 // Response interceptor
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log request timing in development
+    if (IS_DEVELOPMENT && response.config.metadata?.startTime) {
+      const duration = Date.now() - response.config.metadata.startTime;
+      console.log(`[API] ${response.config.method?.toUpperCase()} ${response.config.url} - ${duration}ms`);
+    }
+    
+    // Clear retry state on success
+    clearRetryState(response.config);
+    
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
-    // Handle timeout errors
+    // Get retry state
+    const retryState = getRetryState(originalRequest);
+    
+    // Handle retryable errors
+    if (isRetryableError(error) && retryState.retryCount < RETRY_CONFIG.maxRetries) {
+      retryState.retryCount++;
+      
+      // Calculate backoff delay
+      const delay = calculateBackoffDelay(retryState.retryCount - 1);
+      
+      if (IS_DEVELOPMENT) {
+        console.log(`[API] ${formatRetryMessage(retryState.retryCount, RETRY_CONFIG.maxRetries, delay)}`);
+      }
+      
+      // Wait before retrying
+      await sleep(delay);
+      
+      // Retry the request
+      return apiClient(originalRequest);
+    }
+    
+    // Clear retry state after max retries
+    clearRetryState(originalRequest);
+    
+    // Handle timeout errors after retries
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-      const timeoutError = new Error(
-        'Request timed out. Please check your connection and try again.'
+      const enhancedMessage = enhanceErrorMessage(error);
+      return Promise.reject(
+        new ApiRequestError(
+          enhancedMessage,
+          'TIMEOUT',
+          408,
+          error
+        )
       );
-      (timeoutError as any).code = 'TIMEOUT';
-      (timeoutError as any).originalError = error;
-      return Promise.reject(timeoutError);
     }
 
     // Handle network errors
     if (!error.response && error.request) {
-      const networkError = new Error('Network error. Please check your internet connection.');
-      (networkError as any).code = 'NETWORK_ERROR';
-      (networkError as any).originalError = error;
-      return Promise.reject(networkError);
+      return Promise.reject(
+        new ApiRequestError(
+          'Network error. Please check your internet connection.',
+          'NETWORK_ERROR',
+          undefined,
+          error
+        )
+      );
     }
 
     // Handle 401 Unauthorized
@@ -78,36 +157,53 @@ apiClient.interceptors.response.use(
 
     // Handle server errors (5xx) with user-friendly message
     if (error.response?.status && error.response.status >= 500) {
-      const serverError = new Error(
-        'Server error. Our team has been notified. Please try again later.'
+      return Promise.reject(
+        new ApiRequestError(
+          'Server error. Our team has been notified. Please try again later.',
+          'SERVER_ERROR',
+          error.response.status,
+          error
+        )
       );
-      (serverError as any).code = 'SERVER_ERROR';
-      (serverError as any).status = error.response.status;
-      (serverError as any).originalError = error;
-      return Promise.reject(serverError);
     }
 
     // Handle client errors (4xx) with API message or default
     if (error.response?.status && error.response.status >= 400 && error.response.status < 500) {
-      const errorData = error.response.data as any;
+      const errorData = error.response.data as { message?: string; detail?: string } | undefined;
       const message =
         errorData?.message || errorData?.detail || 'Invalid request. Please check your input.';
-      const clientError = new Error(message);
-      (clientError as any).code = 'CLIENT_ERROR';
-      (clientError as any).status = error.response.status;
-      (clientError as any).originalError = error;
-      return Promise.reject(clientError);
+      return Promise.reject(
+        new ApiRequestError(message, 'CLIENT_ERROR', error.response.status, error)
+      );
     }
 
     // Handle other errors
     if (error.response?.data) {
-      const errorMessage = (error.response.data as any).message || 'An error occurred';
+      const errorData = error.response.data as { message?: string } | undefined;
+      const errorMessage = errorData?.message || 'An error occurred';
       return Promise.reject(new Error(errorMessage));
     }
 
     return Promise.reject(error);
   }
 );
+
+// Helper function to create a request with custom timeout
+export function createRequest(config: AxiosRequestConfig & { operationType?: 'QUICK' | 'STANDARD' | 'LONG_RUNNING' }): AxiosRequestConfig {
+  const { operationType, ...axiosConfig } = config;
+  
+  // Set timeout based on operation type if provided
+  if (operationType) {
+    const timeoutMap = {
+      'QUICK': 5000,
+      'STANDARD': 10000,
+      'LONG_RUNNING': 30000,
+    };
+    axiosConfig.timeout = timeoutMap[operationType];
+  }
+  
+  return axiosConfig;
+}
 
 // Export configured client
 export default apiClient;
@@ -116,7 +212,7 @@ export default apiClient;
 export type { AxiosInstance, AxiosRequestConfig };
 
 // API response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   status: number;
@@ -125,5 +221,5 @@ export interface ApiResponse<T = any> {
 export interface ApiError {
   message: string;
   code?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }

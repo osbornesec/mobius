@@ -3,6 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
 
+// Components
+import ErrorBoundary from '@/components/ErrorBoundary';
+
 // Layouts
 import MainLayout from '@/layouts/MainLayout';
 
@@ -61,49 +64,58 @@ function App() {
   const { isAuthenticated } = useAuthStore();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <Routes>
-          {/* Public routes */}
-          <Route path={APP_ROUTES.LOGIN} element={<div>Login Page</div>} />
-          <Route path={APP_ROUTES.REGISTER} element={<div>Register Page</div>} />
+    <ErrorBoundary
+      isolationLevel="app"
+      resetOnRouteChange
+      onError={(error, errorInfo) => {
+        // Log to external service in production
+        console.error('App Error Boundary caught:', error, errorInfo);
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <Routes>
+            {/* Public routes */}
+            <Route path={APP_ROUTES.LOGIN} element={<div>Login Page</div>} />
+            <Route path={APP_ROUTES.REGISTER} element={<div>Register Page</div>} />
 
-          {/* Protected routes */}
-          <Route element={<MainLayout />}>
-            <Route
-              path={APP_ROUTES.HOME}
-              element={
-                isAuthenticated ? (
-                  <Navigate to={APP_ROUTES.DASHBOARD} replace />
-                ) : (
-                  <Navigate to={APP_ROUTES.LOGIN} replace />
-                )
-              }
-            />
-            <Route path={APP_ROUTES.DASHBOARD} element={<Dashboard />} />
-            <Route path={APP_ROUTES.PROJECTS} element={<div>Projects Page</div>} />
-            <Route path={APP_ROUTES.CONTEXTS} element={<div>Contexts Page</div>} />
-            <Route path={APP_ROUTES.SETTINGS} element={<div>Settings Page</div>} />
-            <Route path={APP_ROUTES.PROFILE} element={<div>Profile Page</div>} />
-          </Route>
+            {/* Protected routes */}
+            <Route element={<MainLayout />}>
+              <Route
+                path={APP_ROUTES.HOME}
+                element={
+                  isAuthenticated ? (
+                    <Navigate to={APP_ROUTES.DASHBOARD} replace />
+                  ) : (
+                    <Navigate to={APP_ROUTES.LOGIN} replace />
+                  )
+                }
+              />
+              <Route path={APP_ROUTES.DASHBOARD} element={<Dashboard />} />
+              <Route path={APP_ROUTES.PROJECTS} element={<div>Projects Page</div>} />
+              <Route path={APP_ROUTES.CONTEXTS} element={<div>Contexts Page</div>} />
+              <Route path={APP_ROUTES.SETTINGS} element={<div>Settings Page</div>} />
+              <Route path={APP_ROUTES.PROFILE} element={<div>Profile Page</div>} />
+            </Route>
 
-          {/* 404 */}
-          <Route path="*" element={<div>404 - Page Not Found</div>} />
-        </Routes>
+            {/* 404 */}
+            <Route path="*" element={<div>404 - Page Not Found</div>} />
+          </Routes>
 
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 5000,
-            style: {
-              background: theme === 'dark' ? '#1F2937' : '#FFFFFF',
-              color: theme === 'dark' ? '#F9FAFB' : '#111827',
-            },
-          }}
-        />
-      </Router>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 5000,
+              style: {
+                background: theme === 'dark' ? '#1F2937' : '#FFFFFF',
+                color: theme === 'dark' ? '#F9FAFB' : '#111827',
+              },
+            }}
+          />
+        </Router>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

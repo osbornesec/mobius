@@ -1,4 +1,4 @@
-import apiClient, { ApiResponse } from './config';
+import apiClient, { ApiResponse, createRequest } from './config';
 import { User } from '@/store/types';
 
 export interface LoginRequest {
@@ -28,7 +28,9 @@ class AuthService {
     const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login', {
       email,
       password,
-    });
+    }, createRequest({
+      operationType: 'QUICK', // Auth should be fast
+    }));
     return response.data.data;
   }
 
@@ -38,19 +40,25 @@ class AuthService {
   }
 
   async logout(): Promise<void> {
-    await apiClient.post('/auth/logout');
+    await apiClient.post('/auth/logout', {}, createRequest({
+      operationType: 'QUICK', // Logout should be fast
+    }));
   }
 
   async refreshToken(): Promise<RefreshTokenResponse> {
     const refreshToken = localStorage.getItem('refreshToken');
     const response = await apiClient.post<ApiResponse<RefreshTokenResponse>>('/auth/refresh', {
       refreshToken,
-    });
+    }, createRequest({
+      operationType: 'QUICK', // Token refresh should be fast
+    }));
     return response.data.data;
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get<ApiResponse<User>>('/auth/me');
+    const response = await apiClient.get<ApiResponse<User>>('/auth/me', createRequest({
+      operationType: 'QUICK', // Getting current user should be fast
+    }));
     return response.data.data;
   }
 

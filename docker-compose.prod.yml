@@ -10,23 +10,32 @@ services:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
-      target: production  # Use production stage without dev dependencies
-    command: ['uvicorn', 'app.main:app', '--host', '0.0.0.0', '--port', '8000', '--workers', '4']
+      target: production # Use production stage without dev dependencies
+    command: ['python', '-m', 'app.main'] # Let the app use its own host/port configuration
     environment:
+      # Mobius-specific configuration for production
+      MOBIUS_HOST: '0.0.0.0' # Required in container for external access
+      MOBIUS_PORT: '8000'
+      MOBIUS_ENVIRONMENT: 'production'
+      MOBIUS_DATABASE__URL: postgresql://${POSTGRES_USER:?Missing POSTGRES_USER}:${POSTGRES_PASSWORD:?Missing POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mobius}
+      MOBIUS_REDIS__URL: redis://:${REDIS_PASSWORD:?Missing REDIS_PASSWORD}@redis:6379
+      MOBIUS_SECURITY__SECRET_KEY: ${MOBIUS_SECRET_KEY:?Missing MOBIUS_SECRET_KEY}
+      MOBIUS_SECURITY__ALLOWED_ORIGINS: ${MOBIUS_ALLOWED_ORIGINS:?Missing MOBIUS_ALLOWED_ORIGINS}
+      # Legacy environment variables
       ENVIRONMENT: production
       LOG_LEVEL: INFO
-    volumes: []  # No volume mounts in production
+    volumes: [] # No volume mounts in production
     restart: always
 
   # React Frontend - Production build
   frontend:
     build:
       context: .
-      dockerfile: docker/frontend/Dockerfile  # Use production Dockerfile
+      dockerfile: docker/frontend/Dockerfile # Use production Dockerfile
     command: ['nginx', '-g', 'daemon off;']
     environment:
       NODE_ENV: production
-    volumes: []  # No volume mounts in production
+    volumes: [] # No volume mounts in production
     restart: always
 
   # PostgreSQL - Production settings

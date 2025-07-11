@@ -1,10 +1,13 @@
 # Claude Code Review Configuration
 
-This document explains the Claude Code Review workflow configuration and best practices for the Mobius project.
+This document explains the Claude Code Review workflow configuration and best
+practices for the Mobius project.
 
 ## Overview
 
-The Claude Code Review workflow automatically reviews pull requests using Claude AI. However, due to token limitations, it has been configured to handle PRs within certain size constraints.
+The Claude Code Review workflow automatically reviews pull requests using Claude
+AI. However, due to token limitations, it has been configured to handle PRs
+within certain size constraints.
 
 ## Size Limitations
 
@@ -50,7 +53,7 @@ If you must submit a large PR:
 
 You can still use Claude for specific parts:
 
-```
+```bash
 @claude review app/core/
 @claude please check the security implications in auth.py
 ```

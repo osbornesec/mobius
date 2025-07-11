@@ -35,7 +35,7 @@ def main():
             ".cpp",
             ".h",
             ".hpp",
-        )
+        ),
     ):
         sys.exit(0)
 

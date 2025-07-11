@@ -48,8 +48,11 @@ def main():
                 file=sys.stderr,
             )
 
--    except Exception as e:
-+    except (IOError, OSError, UnicodeDecodeError) as e:
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            return len(f.readlines())
+    except (IOError, OSError, UnicodeDecodeError) as e:
+        logger.error("Failed to count lines in %s: %s", file_path, e)
         # Log error but don't block operation
         print(f"Error checking line count for {file_path}: {e}", file=sys.stderr)
 

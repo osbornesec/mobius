@@ -45,7 +45,7 @@ jobs:
 
   claude-review:
     needs: check-pr-size
-    if: needs.check-pr-size.outputs.should_review == 'true'
+    if: needs['check-pr-size'].outputs.should_review == 'true'
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
@@ -120,7 +120,7 @@ jobs:
 
   skip-large-pr:
     needs: check-pr-size
-    if: needs.check-pr-size.outputs.should_review == 'false'
+    if: needs['check-pr-size'].outputs.should_review == 'false'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -129,7 +129,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const warningMessage = '${{ needs.check-pr-size.outputs.warning_message }}';
+            const warningMessage = "${{ needs['check-pr-size'].outputs.warning_message }}";
 
             const comment = `## ⚠️ Claude Code Review Skipped
 

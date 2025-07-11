@@ -83,7 +83,7 @@ export interface UIActions {
   setSidebarOpen: (open: boolean) => void;
   toggleCommandPalette: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
-  addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => string;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
 }

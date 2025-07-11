@@ -9,6 +9,7 @@ export { useMutation } from './api/useMutation';
 // UI hooks
 export { useTheme } from './ui/useTheme';
 export { useDebounce } from './ui/useDebounce';
+export { useNotification } from './ui/useNotification';
 
 // Utility hooks
 export { useWebSocket } from './utils/useWebSocket';

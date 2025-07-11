@@ -45,12 +45,7 @@ const useUIStore = create<UIStore>()(
             notifications: [...state.notifications, newNotification],
           }));
 
-          // Auto-remove notification after duration
-          if (notification.duration !== 0) {
-            setTimeout(() => {
-              get().removeNotification(id);
-            }, notification.duration || 5000);
-          }
+          return id; // Return the ID so consumers can manage removal
         },
 
         removeNotification: (id) => {

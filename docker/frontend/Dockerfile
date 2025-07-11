@@ -27,12 +27,10 @@ RUN npm run build
 # Production stage - nginx for serving static files
 FROM nginx:1.27-alpine
 
-# Install curl for health checks
+# Install curl for health checks and remove default nginx config
 # Pinned version for Alpine 3.22 to ensure reproducible builds
-RUN apk add --no-cache curl=8.11.1-r0
-
-# Remove default nginx config
-RUN rm -rf /etc/nginx/conf.d/*
+RUN apk add --no-cache curl=8.11.1-r0 && \
+    rm -rf /etc/nginx/conf.d/*
 
 # Copy custom nginx configuration
 COPY docker/frontend/nginx.conf /etc/nginx/conf.d/default.conf

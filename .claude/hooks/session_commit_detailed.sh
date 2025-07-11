@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Enable strict error handling
+# -e: Exit immediately if any command exits with non-zero status
+# -u: Treat unset variables as an error and exit
+# -o pipefail: Return value of a pipeline is the status of the last command to exit with non-zero status
+set -euo pipefail
+
 # Session Commit Detailed Script
 # Purpose: Creates a git commit with a detailed summary of the current Claude session
 # Usage: ./session_commit_detailed.sh
@@ -71,7 +77,8 @@ TEMP_DIFF="$(mktemp -t staged_changes_XXXXXX.diff)"
 git diff --cached > "$TEMP_DIFF"
 
 # Extract key changes from session file for context
-RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20)
+# Use '|| true' to prevent grep from failing if no matches found
+RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20 || true)
 
 # Use the AI summary generator
 AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 "$SCRIPT_DIR/generate_commit_summary.py" "$TEMP_DIFF" 2>/dev/null)
@@ -112,7 +119,7 @@ echo "----------------------------------------"
 echo -e "\n${YELLOW}Session Statistics:${NC}"
 echo "- Total message size: ${#COMMIT_MESSAGE} characters"
 echo "- Files modified: $(echo "$STAGED_FILES" | wc -l)"
-echo "- Tool executions: $(grep -c "### \[" "$SESSION_FILE" || echo "0")"
+echo "- Tool executions: $(grep -c "### \[" "$SESSION_FILE" 2>/dev/null || echo "0")"
 
 # Warn about large commits
 if [ ${#COMMIT_MESSAGE} -gt 50000 ]; then

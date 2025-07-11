@@ -63,6 +63,10 @@ COPY --chown=mobius:mobius app/ ./
 COPY --chown=mobius:mobius alembic/ ./alembic/
 COPY --chown=mobius:mobius pyproject.toml ./
 
+# Copy production config check script
+COPY --chown=mobius:mobius scripts/backend/check-production-config.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/check-production-config.sh
+
 # Switch to non-root user
 USER mobius
 
@@ -72,6 +76,9 @@ EXPOSE 8000
 # Health check for development
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
+
+# Use the config check script as entrypoint in production
+ENTRYPOINT ["/usr/local/bin/check-production-config.sh"]
 
 # Default command for production
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -87,6 +94,9 @@ COPY --from=dev-builder /opt/venv /opt/venv
 
 # Switch back to non-root user
 USER mobius
+
+# Override the production entrypoint for development
+ENTRYPOINT []
 
 # Development command with hot reloading
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

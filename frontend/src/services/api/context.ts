@@ -66,10 +66,13 @@ class ContextService {
   }
 
   async exportContext(id: string): Promise<Blob> {
-    const response = await apiClient.get(`/contexts/${id}/export`, createRequest({
-      responseType: 'blob',
-      operationType: 'LONG_RUNNING', // Export might take time
-    }));
+    const response = await apiClient.get(
+      `/contexts/${id}/export`,
+      createRequest({
+        responseType: 'blob',
+        operationType: 'LONG_RUNNING', // Export might take time
+      })
+    );
     return response.data;
   }
 
@@ -78,12 +81,14 @@ class ContextService {
     formData.append('file', file);
     formData.append('projectId', projectId);
 
-    const response = await apiClient.post<ApiResponse<Context>>('/contexts/import', formData, createRequest({
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      operationType: 'LONG_RUNNING', // File upload might take time
-    }));
+    const response = await apiClient.post<ApiResponse<Context>>(
+      '/contexts/import',
+      formData,
+      createRequest({
+        // Don't set Content-Type header - browser will set it automatically with boundary
+        operationType: 'LONG_RUNNING', // File upload might take time
+      })
+    );
     return response.data.data;
   }
 }

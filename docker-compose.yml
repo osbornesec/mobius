@@ -72,7 +72,7 @@ services:
     container_name: mobius-backend
     command: ['python', '-m', 'app.main'] # Let the app use its own host/port configuration
     ports:
-      - '127.0.0.1:8000:8000' # Bind only to localhost on the host machine
+      - '8000:8000' # Expose on all interfaces for container-to-container communication
     environment:
       # Mobius-specific configuration
       MOBIUS_HOST: '0.0.0.0' # Must bind to 0.0.0.0 inside container to be accessible

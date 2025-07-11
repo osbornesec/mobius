@@ -3,33 +3,30 @@ import { useLocation } from 'react-router-dom';
 
 /**
  * Hook that provides automatic error boundary reset on route changes
- * 
+ *
  * @description
  * This hook monitors route changes and triggers a reset callback when navigation occurs.
  * Useful for automatically recovering from errors when users navigate away from the
  * problematic route.
- * 
+ *
  * @param resetFn - Function to call when route changes
  * @param enabled - Whether to enable automatic reset on route change
- * 
+ *
  * @example
  * ```tsx
  * function MyErrorBoundary({ children }) {
  *   const [hasError, setHasError] = useState(false);
- *   
+ *
  *   useErrorReset(
  *     () => setHasError(false),
  *     hasError // Only reset when there's an error
  *   );
- *   
+ *
  *   // ... rest of error boundary logic
  * }
  * ```
  */
-export function useErrorReset(
-  resetFn: () => void,
-  enabled: boolean = true
-): void {
+export function useErrorReset(resetFn: () => void, enabled = true): void {
   const location = useLocation();
   const previousLocation = useRef(location.pathname);
   const isFirstRender = useRef(true);
@@ -52,17 +49,17 @@ export function useErrorReset(
 
 /**
  * Hook that provides a manual error reset function with optional delay
- * 
+ *
  * @param delay - Optional delay in milliseconds before reset
  * @returns Function to trigger error reset
- * 
+ *
  * @example
  * ```tsx
  * function ErrorComponent() {
  *   const resetError = useManualErrorReset(500); // 500ms delay
- *   
+ *
  *   return (
- *     <button onClick={resetError}>
+ *     <button type="button" onClick={resetError}>
  *       Reset Error
  *     </button>
  *   );

@@ -13,7 +13,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
-from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings

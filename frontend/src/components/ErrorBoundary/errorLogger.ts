@@ -1,4 +1,5 @@
 import type { ErrorInfo, SerializedError, ErrorLogConfig } from './ErrorBoundary.types';
+import { sessionStorage, StorageError, StorageErrorType } from '@/utils/storage';
 
 /**
  * Default error logging configuration
@@ -37,11 +38,11 @@ function logToConsole(error: Error, errorInfo: ErrorInfo): void {
   console.error('Error:', error);
   console.error('Error Info:', errorInfo);
   console.error('Component Stack:', errorInfo.componentStack);
-  
+
   if (errorInfo.digest) {
     console.error('Error Digest:', errorInfo.digest);
   }
-  
+
   console.groupEnd();
 }
 
@@ -83,50 +84,150 @@ export async function logError(
   config: Partial<ErrorLogConfig> = {}
 ): Promise<void> {
   const finalConfig = { ...defaultConfig, ...config };
-  
+
   // Always serialize the error
   const serializedError = serializeError(error, errorInfo, finalConfig.metadata);
-  
+
   // Log to console in development
   if (finalConfig.logToConsole) {
     logToConsole(error, errorInfo);
   }
-  
+
   // Send to service in production
   if (finalConfig.sendToService) {
     await sendToService(serializedError, finalConfig);
   }
-  
-  // Store in session storage for debugging
+
+  // Store in session storage for debugging with detailed error handling
   try {
-    const errors = JSON.parse(sessionStorage.getItem('mobius_errors') || '[]');
+    const errors = sessionStorage.get<SerializedError[]>('errors', []) || [];
     errors.push(serializedError);
-    
+
     // Keep only the last 10 errors
     if (errors.length > 10) {
       errors.shift();
     }
-    
-    sessionStorage.setItem('mobius_errors', JSON.stringify(errors));
+
+    try {
+      sessionStorage.set('errors', errors);
+      console.debug('[ErrorLogger] Successfully stored error in session storage', {
+        errorCount: errors.length,
+        latestError: serializedError.message,
+      });
+    } catch (storageErr) {
+      if (storageErr instanceof StorageError) {
+        switch (storageErr.type) {
+          case StorageErrorType.QUOTA_EXCEEDED:
+            console.warn(
+              '[ErrorLogger] Session storage quota exceeded. Attempting to clear old errors.'
+            );
+            // Try to clear old errors and retry
+            try {
+              const reducedErrors = errors.slice(-5); // Keep only last 5
+              sessionStorage.set('errors', reducedErrors);
+              console.info('[ErrorLogger] Successfully stored reduced error set');
+            } catch (retryErr) {
+              console.error(
+                '[ErrorLogger] Failed to store errors even after reducing size:',
+                retryErr
+              );
+            }
+            break;
+
+          case StorageErrorType.STORAGE_DISABLED:
+            console.warn(
+              '[ErrorLogger] Session storage is disabled. Errors will not be persisted.'
+            );
+            break;
+
+          case StorageErrorType.SERIALIZE_ERROR:
+            console.error('[ErrorLogger] Failed to serialize error object:', storageErr);
+            // Try storing a simplified version
+            try {
+              const simplifiedError = {
+                message: serializedError.message,
+                timestamp: serializedError.timestamp,
+                url: serializedError.url,
+              };
+              const simplifiedErrors = [...errors.slice(0, -1), simplifiedError];
+              sessionStorage.set('errors', simplifiedErrors);
+              console.info('[ErrorLogger] Stored simplified error instead');
+            } catch (simplifiedErr) {
+              console.error('[ErrorLogger] Failed to store even simplified error:', simplifiedErr);
+            }
+            break;
+
+          default:
+            console.error('[ErrorLogger] Unexpected storage error:', storageErr);
+        }
+      } else {
+        console.error('[ErrorLogger] Unknown error storing to session storage:', storageErr);
+      }
+    }
   } catch (err) {
-    console.error('Failed to store error in session storage:', err);
+    console.error('[ErrorLogger] Failed to process errors for storage:', err);
   }
 }
 
 /**
- * Retrieves stored errors from session storage
+ * Retrieves stored errors from session storage with detailed error handling
  */
 export function getStoredErrors(): SerializedError[] {
   try {
-    return JSON.parse(sessionStorage.getItem('mobius_errors') || '[]');
-  } catch {
+    const errors = sessionStorage.get<SerializedError[]>('errors', []);
+
+    if (!errors || !Array.isArray(errors)) {
+      console.warn('[ErrorLogger] Invalid or missing errors in storage, returning empty array');
+      return [];
+    }
+
+    console.debug('[ErrorLogger] Retrieved stored errors', {
+      errorCount: errors.length,
+      storageInfo: sessionStorage.getStorageInfo(),
+    });
+
+    return errors;
+  } catch (error) {
+    if (error instanceof StorageError) {
+      switch (error.type) {
+        case StorageErrorType.STORAGE_DISABLED:
+          console.info('[ErrorLogger] Storage is disabled, cannot retrieve errors');
+          break;
+        case StorageErrorType.PARSE_ERROR:
+          console.error('[ErrorLogger] Failed to parse stored errors, data may be corrupted');
+          // Attempt to clear corrupted data
+          try {
+            sessionStorage.remove('errors');
+            console.info('[ErrorLogger] Cleared corrupted error data');
+          } catch (clearErr) {
+            console.error('[ErrorLogger] Failed to clear corrupted data:', clearErr);
+          }
+          break;
+        default:
+          console.error('[ErrorLogger] Unexpected error retrieving stored errors:', error);
+      }
+    } else {
+      console.error('[ErrorLogger] Unknown error retrieving stored errors:', error);
+    }
     return [];
   }
 }
 
 /**
- * Clears stored errors from session storage
+ * Clears stored errors from session storage with logging
  */
 export function clearStoredErrors(): void {
-  sessionStorage.removeItem('mobius_errors');
+  try {
+    sessionStorage.remove('errors');
+    console.info('[ErrorLogger] Successfully cleared stored errors');
+  } catch (error) {
+    if (error instanceof StorageError) {
+      console.error('[ErrorLogger] Failed to clear stored errors:', {
+        errorType: error.type,
+        message: error.message,
+      });
+    } else {
+      console.error('[ErrorLogger] Unknown error clearing stored errors:', error);
+    }
+  }
 }

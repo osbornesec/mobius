@@ -1,7 +1,16 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import useAuthStore from '@/store/authStore';
 import { getTimeoutForEndpoint, RETRY_CONFIG } from './timeouts';
-import { isRetryableError, getRetryState, clearRetryState, sleep, calculateBackoffDelay, enhanceErrorMessage, formatRetryMessage } from './retry';
+import {
+  isRetryableError,
+  getRetryState,
+  clearRetryState,
+  sleep,
+  calculateBackoffDelay,
+  enhanceErrorMessage,
+  formatRetryMessage,
+} from './retry';
+import { getAccessToken } from '@/services/tokenStorage';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -41,24 +50,24 @@ export const createAbortController = () => new AbortController();
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add auth token to requests
-    const token = localStorage.getItem('authToken');
+    // Add auth token to requests using token storage abstraction
+    const token = getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Set dynamic timeout based on endpoint
     if (!config.timeout) {
       const endpoint = config.url || '';
       const method = config.method?.toUpperCase() || 'GET';
       config.timeout = getTimeoutForEndpoint(endpoint, method);
     }
-    
+
     // Add request timing in development
     if (IS_DEVELOPMENT) {
       config.metadata = { startTime: Date.now() };
     }
-    
+
     return config;
   },
   (error) => {
@@ -66,18 +75,27 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Create a navigation helper that will be set by the app
+let navigateToLogin: (() => void) | null = null;
+
+export const setNavigateToLogin = (navigate: () => void) => {
+  navigateToLogin = navigate;
+};
+
 // Response interceptor
 apiClient.interceptors.response.use(
   (response) => {
     // Log request timing in development
     if (IS_DEVELOPMENT && response.config.metadata?.startTime) {
       const duration = Date.now() - response.config.metadata.startTime;
-      console.log(`[API] ${response.config.method?.toUpperCase()} ${response.config.url} - ${duration}ms`);
+      console.log(
+        `[API] ${response.config.method?.toUpperCase()} ${response.config.url} - ${duration}ms`
+      );
     }
-    
+
     // Clear retry state on success
     clearRetryState(response.config);
-    
+
     return response;
   },
   async (error: AxiosError) => {
@@ -85,39 +103,34 @@ apiClient.interceptors.response.use(
 
     // Get retry state
     const retryState = getRetryState(originalRequest);
-    
+
     // Handle retryable errors
     if (isRetryableError(error) && retryState.retryCount < RETRY_CONFIG.maxRetries) {
       retryState.retryCount++;
-      
+
       // Calculate backoff delay
       const delay = calculateBackoffDelay(retryState.retryCount - 1);
-      
+
       if (IS_DEVELOPMENT) {
-        console.log(`[API] ${formatRetryMessage(retryState.retryCount, RETRY_CONFIG.maxRetries, delay)}`);
+        console.log(
+          `[API] ${formatRetryMessage(retryState.retryCount, RETRY_CONFIG.maxRetries, delay)}`
+        );
       }
-      
+
       // Wait before retrying
       await sleep(delay);
-      
+
       // Retry the request
       return apiClient(originalRequest);
     }
-    
+
     // Clear retry state after max retries
     clearRetryState(originalRequest);
-    
+
     // Handle timeout errors after retries
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
       const enhancedMessage = enhanceErrorMessage(error);
-      return Promise.reject(
-        new ApiRequestError(
-          enhancedMessage,
-          'TIMEOUT',
-          408,
-          error
-        )
-      );
+      return Promise.reject(new ApiRequestError(enhancedMessage, 'TIMEOUT', 408, error));
     }
 
     // Handle network errors
@@ -133,15 +146,18 @@ apiClient.interceptors.response.use(
     }
 
     // Handle 401 Unauthorized
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Skip retry logic for refresh endpoint to prevent infinite recursion
+    const isRefreshEndpoint = originalRequest.url?.includes('/auth/refresh');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshEndpoint) {
       originalRequest._retry = true;
 
       try {
         // Try to refresh token
         await useAuthStore.getState().refreshToken();
 
-        // Retry original request with new token
-        const token = localStorage.getItem('authToken');
+        // Retry original request with new token from token storage
+        const token = getAccessToken();
         if (token && originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${token}`;
         }
@@ -150,7 +166,14 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed, logout user
         useAuthStore.getState().logout();
-        window.location.href = '/login';
+
+        // Use router navigation if available, otherwise fallback to window.location
+        if (navigateToLogin) {
+          navigateToLogin();
+        } else {
+          window.location.href = '/login';
+        }
+
         return Promise.reject(refreshError);
       }
     }
@@ -189,19 +212,21 @@ apiClient.interceptors.response.use(
 );
 
 // Helper function to create a request with custom timeout
-export function createRequest(config: AxiosRequestConfig & { operationType?: 'QUICK' | 'STANDARD' | 'LONG_RUNNING' }): AxiosRequestConfig {
+export function createRequest(
+  config: AxiosRequestConfig & { operationType?: 'QUICK' | 'STANDARD' | 'LONG_RUNNING' }
+): AxiosRequestConfig {
   const { operationType, ...axiosConfig } = config;
-  
+
   // Set timeout based on operation type if provided
   if (operationType) {
     const timeoutMap = {
-      'QUICK': 5000,
-      'STANDARD': 10000,
-      'LONG_RUNNING': 30000,
+      QUICK: 5000,
+      STANDARD: 10000,
+      LONG_RUNNING: 30000,
     };
     axiosConfig.timeout = timeoutMap[operationType];
   }
-  
+
   return axiosConfig;
 }
 

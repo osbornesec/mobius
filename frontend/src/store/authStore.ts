@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { AuthStore, User } from './types';
 import { authService } from '@/services/api/auth';
+import { StorageError, StorageErrorType } from '@/utils/storage';
 
 const useAuthStore = create<AuthStore>()(
   devtools(
@@ -18,11 +19,11 @@ const useAuthStore = create<AuthStore>()(
           set({ isLoading: true, error: null });
           try {
             const response = await authService.login(email, password);
-            const { user, token } = response;
-            
-            // Store token in localStorage
-            localStorage.setItem('authToken', token);
-            
+            const { user } = response;
+
+            // Token storage is now handled by authService internally
+            // The authService.login method already stores tokens using the abstraction
+
             set({
               user,
               isAuthenticated: true,
@@ -30,6 +31,21 @@ const useAuthStore = create<AuthStore>()(
               error: null,
             });
           } catch (error: any) {
+            // Check if it's a storage error from authService
+            if (error instanceof StorageError) {
+              switch (error.type) {
+                case StorageErrorType.QUOTA_EXCEEDED:
+                  console.error('[AuthStore] Storage quota exceeded, cannot store auth token');
+                  set({ error: 'Unable to save authentication. Storage quota exceeded.' });
+                  break;
+                case StorageErrorType.STORAGE_DISABLED:
+                  console.warn('[AuthStore] Storage is disabled, authentication will not persist');
+                  break;
+                default:
+                  console.error('[AuthStore] Storage error:', error);
+              }
+            }
+
             set({
               user: null,
               isAuthenticated: false,
@@ -47,8 +63,8 @@ const useAuthStore = create<AuthStore>()(
           } catch (error) {
             console.error('Logout error:', error);
           } finally {
-            // Clear token and reset state
-            localStorage.removeItem('authToken');
+            // Token clearing is now handled by authService internally
+            // The authService.logout method already clears tokens using the abstraction
             set({
               user: null,
               isAuthenticated: false,
@@ -61,10 +77,11 @@ const useAuthStore = create<AuthStore>()(
         refreshToken: async () => {
           try {
             const response = await authService.refreshToken();
-            const { user, token } = response;
-            
-            localStorage.setItem('authToken', token);
-            
+            const { user } = response;
+
+            // Token storage is now handled by authService internally
+            // The authService.refreshToken method already updates tokens using the abstraction
+
             set({
               user,
               isAuthenticated: true,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { localStorage as storageUtil, StorageError, StorageErrorType } from '@/utils/storage';
 
 /**
  * @description
@@ -34,13 +35,38 @@ export function useLocalStorage<T>(
   key: string,
   defaultValue: T
 ): [T, (value: T | ((val: T) => T)) => void, () => void] {
-  // Get value from localStorage or use default
+  // Get value from localStorage or use default with detailed error handling
   const getStoredValue = useCallback((): T => {
     try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : defaultValue;
+      const value = storageUtil.get<T>(key, defaultValue);
+      return value !== null ? value : defaultValue;
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
+      if (error instanceof StorageError) {
+        switch (error.type) {
+          case StorageErrorType.STORAGE_DISABLED:
+            console.warn(
+              `[useLocalStorage] Storage is disabled for key "${key}", using default value`
+            );
+            break;
+          case StorageErrorType.PARSE_ERROR:
+            console.error(
+              `[useLocalStorage] Parse error for key "${key}", using default value:`,
+              error
+            );
+            // Attempt to clear corrupted data
+            try {
+              storageUtil.remove(key);
+              console.info(`[useLocalStorage] Cleared corrupted data for key "${key}"`);
+            } catch (clearErr) {
+              console.error(`[useLocalStorage] Failed to clear corrupted data:`, clearErr);
+            }
+            break;
+          default:
+            console.error(`[useLocalStorage] Unexpected error reading key "${key}":`, error);
+        }
+      } else {
+        console.error(`[useLocalStorage] Unknown error reading key "${key}":`, error);
+      }
       return defaultValue;
     }
   }, [key, defaultValue]);
@@ -53,23 +79,63 @@ export function useLocalStorage<T>(
       try {
         // Allow value to be a function so we have same API as useState
         const valueToStore = value instanceof Function ? value(storedValue) : value;
-        
+
         // Save state
         setStoredValue(valueToStore);
-        
-        // Save to local storage
-        window.localStorage.setItem(key, JSON.stringify(valueToStore));
-        
-        // Dispatch storage event for other tabs/windows
-        window.dispatchEvent(
-          new StorageEvent('storage', {
-            key,
-            newValue: JSON.stringify(valueToStore),
-            url: window.location.href,
-          })
-        );
+
+        // Save to local storage with error handling
+        try {
+          storageUtil.set(key, valueToStore);
+          console.debug(`[useLocalStorage] Successfully set key "${key}"`);
+
+          // Dispatch storage event for other tabs/windows
+          window.dispatchEvent(
+            new StorageEvent('storage', {
+              key,
+              newValue: JSON.stringify(valueToStore),
+              url: window.location.href,
+            })
+          );
+        } catch (storageErr) {
+          if (storageErr instanceof StorageError) {
+            switch (storageErr.type) {
+              case StorageErrorType.QUOTA_EXCEEDED:
+                console.error(`[useLocalStorage] Storage quota exceeded for key "${key}"`, {
+                  valueSize: JSON.stringify(valueToStore).length,
+                  storageInfo: storageUtil.getStorageInfo(),
+                });
+                // Notify user through UI if possible
+                setStoredValue(storedValue); // Revert to previous value
+                throw new Error(`Storage quota exceeded. Unable to save data for "${key}".`);
+
+              case StorageErrorType.STORAGE_DISABLED:
+                console.warn(`[useLocalStorage] Storage is disabled, cannot persist key "${key}"`);
+                break;
+
+              case StorageErrorType.SERIALIZE_ERROR:
+                console.error(
+                  `[useLocalStorage] Failed to serialize value for key "${key}":`,
+                  storageErr
+                );
+                setStoredValue(storedValue); // Revert to previous value
+                break;
+
+              default:
+                console.error(
+                  `[useLocalStorage] Unexpected storage error for key "${key}":`,
+                  storageErr
+                );
+            }
+          } else {
+            console.error(`[useLocalStorage] Unknown error setting key "${key}":`, storageErr);
+          }
+        }
       } catch (error) {
-        console.error(`Error setting localStorage key "${key}":`, error);
+        // Re-throw quota exceeded errors to notify the caller
+        if (error instanceof Error && error.message.includes('quota exceeded')) {
+          throw error;
+        }
+        console.error(`[useLocalStorage] Error in setValue for key "${key}":`, error);
       }
     },
     [key, storedValue]
@@ -78,9 +144,10 @@ export function useLocalStorage<T>(
   // Remove value from localStorage
   const removeValue = useCallback(() => {
     try {
-      window.localStorage.removeItem(key);
+      storageUtil.remove(key);
       setStoredValue(defaultValue);
-      
+      console.debug(`[useLocalStorage] Successfully removed key "${key}"`);
+
       // Dispatch storage event for other tabs/windows
       window.dispatchEvent(
         new StorageEvent('storage', {
@@ -90,7 +157,14 @@ export function useLocalStorage<T>(
         })
       );
     } catch (error) {
-      console.error(`Error removing localStorage key "${key}":`, error);
+      if (error instanceof StorageError) {
+        console.error(`[useLocalStorage] Storage error removing key "${key}":`, {
+          errorType: error.type,
+          message: error.message,
+        });
+      } else {
+        console.error(`[useLocalStorage] Unknown error removing key "${key}":`, error);
+      }
     }
   }, [key, defaultValue]);
 
@@ -99,12 +173,27 @@ export function useLocalStorage<T>(
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === key && e.newValue !== null) {
         try {
-          setStoredValue(JSON.parse(e.newValue));
+          const parsedValue = JSON.parse(e.newValue);
+          setStoredValue(parsedValue);
+          console.debug(`[useLocalStorage] Synced key "${key}" from another tab`);
         } catch (error) {
-          console.error(`Error parsing localStorage value for key "${key}":`, error);
+          console.error(
+            `[useLocalStorage] Error parsing storage event value for key "${key}":`,
+            error
+          );
+          // Try to get the value directly from storage
+          try {
+            const value = storageUtil.get<T>(key, defaultValue);
+            if (value !== null) {
+              setStoredValue(value);
+            }
+          } catch (getError) {
+            console.error(`[useLocalStorage] Failed to recover value for key "${key}":`, getError);
+          }
         }
       } else if (e.key === key && e.newValue === null) {
         setStoredValue(defaultValue);
+        console.debug(`[useLocalStorage] Key "${key}" was removed in another tab`);
       }
     };
 

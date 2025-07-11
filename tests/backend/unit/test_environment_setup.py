@@ -270,8 +270,8 @@ class TestEnvironmentSetup:
         required_vars = [
             # API Configuration
             "FASTAPI_ENV",
-            "API_HOST",
-            "API_PORT",
+            "MOBIUS_HOST",
+            "MOBIUS_PORT",
             "API_VERSION",
             
             # Database Configuration
@@ -321,8 +321,8 @@ class TestEnvironmentSetup:
         # Test default values are provided where appropriate
         vars_with_defaults = {
             "FASTAPI_ENV": "development",
-            "API_HOST": "0.0.0.0",
-            "API_PORT": "8000",
+            "MOBIUS_HOST": "0.0.0.0",
+            "MOBIUS_PORT": "8000",
             "API_VERSION": "v1",
             "JWT_ALGORITHM": "HS256",
             "JWT_EXPIRATION_HOURS": "24",

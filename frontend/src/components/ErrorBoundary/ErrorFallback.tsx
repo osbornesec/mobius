@@ -3,18 +3,18 @@ import type { ErrorFallbackProps } from './ErrorBoundary.types';
 
 /**
  * Default error fallback component for the ErrorBoundary
- * 
+ *
  * @description
  * Provides a user-friendly error display with different UI based on the isolation level
  * and environment (development vs production). Includes error details in development
  * and a reset button to recover from the error state.
  */
-function ErrorFallback({ 
-  error, 
-  errorInfo, 
-  reset, 
+function ErrorFallback({
+  error,
+  errorInfo,
+  reset,
   showDetails,
-  isolationLevel 
+  isolationLevel,
 }: ErrorFallbackProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isDev = import.meta.env.DEV;
@@ -65,14 +65,12 @@ function ErrorFallback({
       <div className={styles.card}>
         {/* Error Header */}
         <div className="flex items-start space-x-3">
-          <span className="text-2xl" role="img" aria-label="Error">{styles.icon}</span>
+          <span className="text-2xl" role="img" aria-label="Error">
+            {styles.icon}
+          </span>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {styles.title}
-            </h2>
-            <p className="mt-1 text-gray-600">
-              {styles.description}
-            </p>
+            <h2 className="text-xl font-semibold text-gray-900">{styles.title}</h2>
+            <p className="mt-1 text-gray-600">{styles.description}</p>
           </div>
         </div>
 
@@ -80,30 +78,25 @@ function ErrorFallback({
         {(isDev || showDetails) && (
           <div className="mt-4">
             <button
+              type="button"
               onClick={() => setIsExpanded(!isExpanded)}
               className="text-sm text-blue-600 hover:text-blue-800 font-medium focus:outline-none focus:underline"
             >
               {isExpanded ? 'Hide' : 'Show'} Error Details
             </button>
-            
+
             {isExpanded && (
               <div className="mt-3 space-y-3">
                 {/* Error Message */}
                 <div className="bg-gray-100 rounded p-3">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-1">
-                    Error Message:
-                  </h3>
-                  <code className="text-xs text-red-600 break-all">
-                    {error.message}
-                  </code>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-1">Error Message:</h3>
+                  <code className="text-xs text-red-600 break-all">{error.message}</code>
                 </div>
 
                 {/* Component Stack */}
                 {errorInfo.componentStack && (
                   <div className="bg-gray-100 rounded p-3">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-1">
-                      Component Stack:
-                    </h3>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-1">Component Stack:</h3>
                     <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap">
                       {errorInfo.componentStack}
                     </pre>
@@ -113,9 +106,7 @@ function ErrorFallback({
                 {/* Error Stack (Dev Only) */}
                 {isDev && error.stack && (
                   <div className="bg-gray-100 rounded p-3">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-1">
-                      Error Stack:
-                    </h3>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-1">Error Stack:</h3>
                     <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap">
                       {error.stack}
                     </pre>
@@ -125,12 +116,8 @@ function ErrorFallback({
                 {/* Error Digest */}
                 {errorInfo.digest && (
                   <div className="bg-gray-100 rounded p-3">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-1">
-                      Error ID:
-                    </h3>
-                    <code className="text-xs text-gray-600">
-                      {errorInfo.digest}
-                    </code>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-1">Error ID:</h3>
+                    <code className="text-xs text-gray-600">{errorInfo.digest}</code>
                   </div>
                 )}
               </div>
@@ -141,15 +128,17 @@ function ErrorFallback({
         {/* Action Buttons */}
         <div className="mt-6 flex items-center space-x-3">
           <button
+            type="button"
             onClick={reset}
             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Try Again
           </button>
-          
+
           {isolationLevel === 'app' && (
             <button
-              onClick={() => window.location.href = '/'}
+              type="button"
+              onClick={() => (window.location.href = '/')}
               className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Go to Home
@@ -161,7 +150,7 @@ function ErrorFallback({
         {(isolationLevel === 'app' || isolationLevel === 'page') && (
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-500">
-              If this problem persists, please contact support with error ID: 
+              If this problem persists, please contact support with error ID:
               <code className="ml-1 text-xs bg-gray-100 px-1 py-0.5 rounded">
                 {errorInfo.digest || new Date().getTime()}
               </code>

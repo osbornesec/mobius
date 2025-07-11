@@ -7,30 +7,10 @@ const storeResetFns = new Set<() => void>();
 
 // Mock Zustand
 vi.mock('zustand', async () => {
-  const { create: actualCreate, createStore: actualCreateStore } =
-    await vi.importActual<typeof import('zustand')>('zustand');
+  const actual = await vi.importActual<typeof import('zustand')>('zustand');
 
-  // Mock create function
-  const create = (<T>(stateCreator: any) => {
-    const store = actualCreate(stateCreator);
-    const initialState = store.getState();
-    storeResetFns.add(() => {
-      store.setState(initialState, true);
-    });
-    return store;
-  }) as typeof actualCreate;
-
-  // Mock createStore function
-  const createStore = (<T>(stateCreator: any) => {
-    const store = actualCreateStore(stateCreator);
-    const initialState = store.getInitialState();
-    storeResetFns.add(() => {
-      store.setState(initialState, true);
-    });
-    return store;
-  }) as typeof actualCreateStore;
-
-  return { create, createStore };
+  // Return the actual implementation
+  return actual;
 });
 
 // Cleanup after each test case

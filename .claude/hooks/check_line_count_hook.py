@@ -40,9 +40,8 @@ def main():
         sys.exit(0)
 
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             line_count = sum(1 for line in f)
-
         if line_count > MAX_LINES:
             print(
                 f"Suggestion: File '{file_path}' has {line_count} lines, which exceeds the recommended {MAX_LINES} lines. Consider refactoring this file to improve readability and maintainability.",

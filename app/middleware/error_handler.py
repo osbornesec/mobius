@@ -114,10 +114,10 @@ def get_request_id(request: Request) -> Optional[str]:
     """
     # Try to get from state (set by correlation middleware)
     if hasattr(request.state, "correlation_id"):
-        request_id = request.state.correlation_id
-        if isinstance(request_id, UUID):
-            return str(request_id)
-        return request_id
+        correlation_id = request.state.correlation_id
+        if isinstance(correlation_id, UUID):
+            return str(correlation_id)
+        return correlation_id
     
     # Try to get from headers - check common variations
     headers_to_check = [

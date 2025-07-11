@@ -16,7 +16,7 @@ try:
     if tool_name == "Read":
         file_path = tool_input.get("file_path", "")
         if file_path.endswith(
-            (".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".c", ".cpp", ".go", ".rs")
+            (".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".c", ".cpp", ".go", ".rs",)
         ):
             print("use context7", file=sys.stderr)
             sys.exit(2)

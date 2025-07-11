@@ -23,7 +23,8 @@ export function useTheme() {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const applyTheme = () => {
-      if (theme === 'dark' || (theme === 'system' && mediaQuery.matches)) {
+      const shouldBeDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches);
+      if (shouldBeDark) {
         root.classList.add('dark');
       } else {
         root.classList.remove('dark');
@@ -33,7 +34,7 @@ export function useTheme() {
     // Apply theme immediately
     applyTheme();
 
-    // Listen for system theme changes
+    // Listen for system theme changes only when theme is 'system'
     const handleSystemThemeChange = (e: MediaQueryListEvent) => {
       if (theme === 'system') {
         if (e.matches) {
@@ -44,10 +45,16 @@ export function useTheme() {
       }
     };
 
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    // Only add the event listener when theme is 'system'
+    if (theme === 'system') {
+      mediaQuery.addEventListener('change', handleSystemThemeChange);
+    }
 
     return () => {
-      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      // Only remove the event listener when theme is 'system'
+      if (theme === 'system') {
+        mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      }
     };
   }, [theme]);
 

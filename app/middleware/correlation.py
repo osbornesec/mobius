@@ -63,11 +63,11 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         """
         # Try to get correlation ID from headers first
         existing_correlation_id = self._get_correlation_id_from_headers(request)
-        correlation_id_source = "existing" if existing_correlation_id else None
 
         if existing_correlation_id:
             # Use existing correlation ID from headers
             correlation_id = existing_correlation_id
+            correlation_id_source = "existing"
             self.logger.debug(
                 "Using existing correlation ID from headers",
                 correlation_id=correlation_id,

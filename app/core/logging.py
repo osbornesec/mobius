@@ -20,10 +20,10 @@ from pydantic import BaseModel, Field
 class LogConfig(BaseModel):
     """Logging configuration settings."""
 
-    level: str = Field("INFO", description="Default log level")
-    format: str = Field("json", description="Log format (json or console)")
+    level: str = Field(default="INFO", description="Default log level")
+    format: str = Field(default="json", description="Log format (json or console)")
     correlation_id_header: str = Field(
-        "X-Correlation-ID", description="Header name for correlation ID"
+        default="X-Correlation-ID", description="Header name for correlation ID"
     )
     mask_fields: List[str] = Field(
         default_factory=lambda: [
@@ -36,9 +36,11 @@ class LogConfig(BaseModel):
         description="Field names to mask in logs",
     )
     include_process_info: bool = Field(
-        True, description="Include process information in logs"
+        default=True, description="Include process information in logs"
     )
-    include_timestamp: bool = Field(True, description="Include timestamps in logs")
+    include_timestamp: bool = Field(
+        default=True, description="Include timestamps in logs"
+    )
 
 
 class SensitiveDataMasker:

@@ -1166,3 +1166,300 @@ class TestErrorScenarios:
             logger.info("custom_object_test", obj=CustomObject())
         except Exception as e:
             pytest.fail(f"Logging with custom object raised: {e}")
+
+
+class TestProductionLoggingFeatures:
+    """Test specific features from the production logging module."""
+
+    def test_sensitive_data_masker_initialization(self):
+        """Test that SensitiveDataMasker is properly initialized with mask fields."""
+        mask_fields = ["password", "token", "secret"]
+        masker = SensitiveDataMasker(mask_fields)
+
+        assert masker.mask_fields == mask_fields
+        assert masker._mask_value == "***MASKED***"
+
+    def test_sensitive_data_masker_call_method(self, capture_logs):
+        """Test the __call__ method of SensitiveDataMasker directly."""
+        masker = SensitiveDataMasker(["password", "api_key"])
+
+        event_dict = {
+            "event": "test",
+            "username": "john",
+            "password": "secret123",
+            "data": {"api_key": "sk-12345", "public": "visible"},
+        }
+
+        # Create a mock logger for the call
+        import structlog
+
+        mock_logger = structlog.get_logger("test")
+        masked_dict = masker(mock_logger, "info", event_dict)
+
+        assert masked_dict["username"] == "john"
+        assert masked_dict["password"] == "***MASKED***"
+        assert masked_dict["data"]["api_key"] == "***MASKED***"
+        assert masked_dict["data"]["public"] == "visible"
+
+    def test_log_config_default_values(self):
+        """Test LogConfig model with default values."""
+        config = LogConfig()
+
+        assert config.level == "INFO"
+        assert config.format == "json"
+        assert config.correlation_id_header == "X-Correlation-ID"
+        assert "password" in config.mask_fields
+        assert "secret" in config.mask_fields
+        assert "token" in config.mask_fields
+        assert "api_key" in config.mask_fields
+        assert "authorization" in config.mask_fields
+        assert config.include_process_info is True
+        assert config.include_timestamp is True
+
+    def test_log_config_custom_values(self):
+        """Test LogConfig model with custom values."""
+        custom_mask_fields = ["custom_secret", "private_data"]
+        config = LogConfig(
+            level="DEBUG",
+            format="console",
+            correlation_id_header="X-Request-ID",
+            mask_fields=custom_mask_fields,
+            include_process_info=False,
+            include_timestamp=False,
+        )
+
+        assert config.level == "DEBUG"
+        assert config.format == "console"
+        assert config.correlation_id_header == "X-Request-ID"
+        assert config.mask_fields == custom_mask_fields
+        assert config.include_process_info is False
+        assert config.include_timestamp is False
+
+    def test_get_logger_returns_bound_logger(self):
+        """Test that get_logger returns a properly configured BoundLogger."""
+        logger = get_logger("test.module")
+
+        assert isinstance(logger, structlog.stdlib.BoundLogger)
+
+    def test_setup_logging_with_json_format_in_dev(self, clean_logging, capture_logs):
+        """Test that JSON format can be forced in development environment."""
+        config = LogConfig(format="json")
+        setup_logging_with_capture(config, capture_logs, "development")
+
+        logger = get_logger("test")
+        logger.info("test_message", key="value")
+
+        # With JSON format, the output should be structured
+        assert len(capture_logs) > 0
+        log_entry = capture_logs[0]
+        assert "event" in log_entry
+        assert log_entry["event"] == "test_message"
+
+    def test_setup_logging_production_exception_handling(
+        self, clean_logging, capture_logs
+    ):
+        """Test that production environment handles exceptions with short format."""
+        config = LogConfig()
+        setup_logging_with_capture(config, capture_logs, "production")
+
+        logger = get_logger("test")
+
+        try:
+            raise ValueError("Test exception with details")
+        except ValueError:
+            logger.exception("error_occurred")
+
+        log_entry = capture_logs[-1]
+
+        # In production, exc_info should be present
+        assert "exc_info" in log_entry
+        assert log_entry["exc_info"] is True
+
+    def test_logging_without_process_info(self, clean_logging, capture_logs):
+        """Test logging when process info is disabled."""
+        config = LogConfig(include_process_info=False)
+        setup_logging_with_capture(config, capture_logs, "development")
+
+        logger = get_logger("test")
+        logger.info("test_message")
+
+        log_entry = capture_logs[-1]
+
+        # Process info fields should not be present
+        assert "filename" not in log_entry
+        assert "func_name" not in log_entry
+        assert "lineno" not in log_entry
+
+    def test_case_insensitive_field_masking(self, clean_logging, capture_logs):
+        """Test that field masking is case-insensitive."""
+        config = LogConfig(mask_fields=["password", "api_key"])
+        setup_logging_with_capture(config, capture_logs, "development")
+
+        logger = get_logger("test")
+        logger.info(
+            "test",
+            Password="should_mask",  # Capital P
+            PASSWORD="also_mask",  # All caps
+            Api_Key="mask_this",  # Different casing
+            API_KEY="mask_too",  # All caps with underscore
+        )
+
+        log_entry = capture_logs[-1]
+
+        # All variations should be masked
+        assert log_entry["Password"] == "***MASKED***"
+        assert log_entry["PASSWORD"] == "***MASKED***"
+        assert log_entry["Api_Key"] == "***MASKED***"
+        assert log_entry["API_KEY"] == "***MASKED***"
+
+    def test_nested_list_with_mixed_types(self, clean_logging, capture_logs):
+        """Test masking in lists containing mixed types."""
+        config = LogConfig(mask_fields=["secret"])
+        setup_logging_with_capture(config, capture_logs, "development")
+
+        logger = get_logger("test")
+        logger.info(
+            "test",
+            items=[
+                "plain string",
+                123,
+                {"secret": "hidden", "public": "visible"},
+                ["nested", "list"],
+                {"nested": {"secret": "also_hidden"}},
+            ],
+        )
+
+        log_entry = capture_logs[-1]
+        items = log_entry["items"]
+
+        assert items[0] == "plain string"
+        assert items[1] == 123
+        assert items[2]["secret"] == "***MASKED***"
+        assert items[2]["public"] == "visible"
+        assert items[3] == ["nested", "list"]
+        assert items[4]["nested"]["secret"] == "***MASKED***"
+
+    def test_setup_logging_console_renderer_in_dev(self, clean_logging):
+        """Test that console renderer is used in development when format is not json."""
+        config = LogConfig(format="console")
+        setup_logging(config, environment="development")
+
+        # Check that the console renderer is in the processors
+        processors = structlog.get_config()["processors"]
+        renderer_types = [type(p).__name__ for p in processors]
+        assert "ConsoleRenderer" in renderer_types
+
+    def test_setup_logging_json_renderer_in_production(self, clean_logging):
+        """Test that JSON renderer is always used in production."""
+        config = LogConfig(format="console")  # Even with console format
+        setup_logging(config, environment="production")
+
+        # Check that JSON renderer is used
+        processors = structlog.get_config()["processors"]
+        renderer_types = [type(p).__name__ for p in processors]
+        assert "JSONRenderer" in renderer_types
+        assert "ConsoleRenderer" not in renderer_types
+
+    def test_masker_with_empty_mask_fields(self, capture_logs):
+        """Test SensitiveDataMasker with empty mask fields list."""
+        masker = SensitiveDataMasker([])
+
+        event_dict = {"password": "should_not_mask", "secret": "visible"}
+
+        # Create a mock logger for the call
+        import structlog
+
+        mock_logger = structlog.get_logger("test")
+        masked_dict = masker(mock_logger, "info", event_dict)
+
+        # Nothing should be masked
+        assert masked_dict["password"] == "should_not_mask"
+        assert masked_dict["secret"] == "visible"
+
+    def test_deep_nested_masking(self, clean_logging, capture_logs):
+        """Test masking in deeply nested structures."""
+        config = LogConfig(mask_fields=["token"])
+        setup_logging_with_capture(config, capture_logs, "development")
+
+        logger = get_logger("test")
+        logger.info(
+            "deep_test",
+            level1={
+                "level2": {
+                    "level3": {"level4": {"token": "deep_secret", "data": "visible"}}
+                }
+            },
+        )
+
+        log_entry = capture_logs[-1]
+        deep_value = log_entry["level1"]["level2"]["level3"]["level4"]
+
+        assert deep_value["token"] == "***MASKED***"
+        assert deep_value["data"] == "visible"
+
+    def test_environment_variable_default(self, clean_logging):
+        """Test that setup_logging uses ENVIRONMENT env var when not provided."""
+        # Remove ENVIRONMENT if it exists
+        original_env = os.environ.get("ENVIRONMENT")
+        if "ENVIRONMENT" in os.environ:
+            del os.environ["ENVIRONMENT"]
+
+        try:
+            # Should default to development
+            setup_logging(LogConfig())
+            root_logger = logging.getLogger()
+            assert root_logger.level == logging.DEBUG
+
+            # Set ENVIRONMENT to production
+            os.environ["ENVIRONMENT"] = "production"
+            setup_logging(LogConfig())
+            root_logger = logging.getLogger()
+            # In production, should use configured level (INFO by default)
+            assert root_logger.level == logging.INFO
+        finally:
+            # Restore original environment
+            if original_env:
+                os.environ["ENVIRONMENT"] = original_env
+            elif "ENVIRONMENT" in os.environ:
+                del os.environ["ENVIRONMENT"]
+
+    def test_timestamp_processor_included(self, clean_logging, capture_logs):
+        """Test that timestamp processor is included in the setup."""
+        config = LogConfig()
+        setup_logging_with_capture(config, capture_logs, "development")
+
+        logger = get_logger("test")
+        logger.info("timestamp_test")
+
+        log_entry = capture_logs[-1]
+
+        # Should have timestamp field
+        assert "timestamp" in log_entry
+        # Should be in ISO format
+        assert "T" in log_entry["timestamp"]
+
+    def test_partial_field_name_matching(self, clean_logging, capture_logs):
+        """Test that masking works for fields containing masked terms."""
+        config = LogConfig(mask_fields=["key", "pass"])
+        setup_logging_with_capture(config, capture_logs, "development")
+
+        logger = get_logger("test")
+        logger.info(
+            "partial_match",
+            apikey="should_mask",  # Contains "key"
+            keyvalue="also_mask",  # Contains "key"
+            password="mask_this",  # Contains "pass"
+            passport="mask_too",  # Contains "pass"
+            keyword="mask_me",  # Contains "key"
+            bypass="and_me",  # Contains "pass"
+        )
+
+        log_entry = capture_logs[-1]
+
+        # All should be masked as they contain the masked terms
+        assert log_entry["apikey"] == "***MASKED***"
+        assert log_entry["keyvalue"] == "***MASKED***"
+        assert log_entry["password"] == "***MASKED***"
+        assert log_entry["passport"] == "***MASKED***"
+        assert log_entry["keyword"] == "***MASKED***"
+        assert log_entry["bypass"] == "***MASKED***"

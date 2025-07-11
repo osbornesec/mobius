@@ -78,8 +78,8 @@ git diff --cached > "$TEMP_DIFF"
 
 # Extract key changes from session file for context
 # Use '|| true' to prevent grep from failing if no matches found
-RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20 || true)
-
+# Uncomment to include recent actions in the commit body
+# RECENT_WORK=$(echo "$SESSION_CONTENT" | grep -E "(File Write|File Edit|File Read|Bash Command)" | tail -20 || true)
 # Use the AI summary generator
 AI_SUMMARY=$(echo "$SESSION_CONTENT" | python3 "$SCRIPT_DIR/generate_commit_summary.py" "$TEMP_DIFF" 2>/dev/null)
 

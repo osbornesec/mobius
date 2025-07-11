@@ -4,7 +4,7 @@
 
 This roadmap provides a concrete, executable plan to transform the Mobius Context Engineering Platform from comprehensive planning to production-ready implementation. The plan spans 24 months with 4 distinct phases, each delivering incremental value while building toward the full architectural vision.
 
-**Total Investment**: $2.9M - $3.8M over 24 months  
+**Total Investment**: $2.9M - $3.8M over 24 months
 **Target Outcome**: Enterprise-grade AI context engineering platform serving 10k+ concurrent users with <200ms latency
 
 ## Current State Assessment

@@ -255,7 +255,7 @@ def main():
     try:
         with open(diff_file, "r") as f:
             diff_content = f.read()
-    except:
+    except (FileNotFoundError, IOError):
         diff_content = ""
 
     # Read session content from stdin

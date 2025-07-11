@@ -42,7 +42,7 @@ import subprocess
 
 class ErrorAnalyzer:
     """Analyze error patterns and frequencies"""
-    
+
     def __init__(self, log_dir: str | None = None):
         # prefer explicit arg, then env var, then default
         resolved = log_dir or os.environ.get("MOBIUS_LOG_PATH", "/var/log/mobius")
@@ -57,11 +57,11 @@ class ErrorAnalyzer:
             'validation': r'(ValidationError|Pydantic)',
             'frontend': r'(React|TypeError|ReferenceError)'
         }
-        
+
     def analyze_error_frequency(self, time_range: Optional[Tuple[datetime, datetime]] = None) -> Dict:
         """Analyze error frequency by type and severity"""
         errors = defaultdict(lambda: {'count': 0, 'severity': Counter(), 'messages': []})
-        
+
         for log_file in self.get_log_files(time_range):
             with open(log_file, 'r') as f:
                 for line in f:
@@ -71,25 +71,25 @@ class ErrorAnalyzer:
                         errors[error_type]['count'] += 1
                         errors[error_type]['severity'][error_info['severity']] += 1
                         errors[error_type]['messages'].append(error_info['message'][:100])
-        
+
         return self.generate_frequency_report(errors)
-    
+
     def parse_error_line(self, line: str) -> Optional[Dict]:
         """Parse error information from log line"""
         # Standard log format: [timestamp] [level] [service] message
         match = re.match(r'\[(.*?)\] \[(ERROR|CRITICAL|WARNING)\] \[(.*?)\] (.*)', line)
         if not match:
             return None
-            
+
         timestamp, severity, service, message = match.groups()
-        
+
         # Classify error type
         error_type = 'unknown'
         for category, pattern in self.error_patterns.items():
             if re.search(pattern, message, re.I):
                 error_type = category
                 break
-                
+
         return {
             'timestamp': timestamp,
             'severity': severity,
@@ -97,13 +97,13 @@ class ErrorAnalyzer:
             'type': error_type,
             'message': message
         }
-    
+
     def analyze_stack_traces(self) -> Dict[str, List[Dict]]:
         """Identify and group similar stack traces"""
         stack_traces = defaultdict(list)
         current_trace = []
         trace_key = None
-        
+
         for log_file in self.get_log_files():
             with open(log_file, 'r') as f:
                 for line in f:
@@ -120,13 +120,13 @@ class ErrorAnalyzer:
                         if 'Error:' in line:
                             # Use error message as key for grouping
                             trace_key = re.sub(r'[0-9]+', 'N', line.strip())
-        
+
         return self.group_similar_traces(stack_traces)
-    
+
     def detect_error_trends(self, window_size: int = 3600) -> Dict:
         """Detect error trends over time"""
         time_buckets = defaultdict(lambda: defaultdict(int))
-        
+
         for log_file in self.get_log_files():
             with open(log_file, 'r') as f:
                 for line in f:
@@ -135,7 +135,7 @@ class ErrorAnalyzer:
                         timestamp = datetime.fromisoformat(error_info['timestamp'])
                         bucket = timestamp.replace(minute=0, second=0, microsecond=0)
                         time_buckets[bucket][error_info['type']] += 1
-        
+
         return self.calculate_trends(time_buckets)
 ```
 
@@ -144,7 +144,7 @@ class ErrorAnalyzer:
 ```python
 class CriticalErrorDetector:
     """Detect and alert on critical errors"""
-    
+
     def __init__(self):
         self.critical_patterns = [
             {'pattern': r'OutOfMemoryError', 'category': 'resource', 'severity': 'critical'},
@@ -154,11 +154,11 @@ class CriticalErrorDetector:
             {'pattern': r'Service crash', 'category': 'availability', 'severity': 'critical'},
             {'pattern': r'Infinite loop detected', 'category': 'performance', 'severity': 'critical'}
         ]
-        
+
     def scan_for_critical_errors(self, log_files: List[Path]) -> List[Dict]:
         """Scan logs for critical error patterns"""
         critical_errors = []
-        
+
         for log_file in log_files:
             with open(log_file, 'r') as f:
                 for line_num, line in enumerate(f, 1):
@@ -172,7 +172,7 @@ class CriticalErrorDetector:
                                 'message': line.strip(),
                                 'timestamp': self.extract_timestamp(line)
                             })
-        
+
         return sorted(critical_errors, key=lambda x: x['timestamp'], reverse=True)
 ```
 
@@ -183,15 +183,15 @@ class CriticalErrorDetector:
 ```python
 class LogAnalyzer:
     """Comprehensive log analysis"""
-    
+
     def __init__(self):
         self.log_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
         self.services = ['api', 'frontend', 'worker', 'scheduler', 'vector_db']
-        
+
     def analyze_log_distribution(self) -> Dict:
         """Analyze log level distribution across services"""
         distribution = defaultdict(lambda: Counter())
-        
+
         for service in self.services:
             log_files = Path(f"/var/log/mobius/{service}").glob("*.log")
             for log_file in log_files:
@@ -200,9 +200,9 @@ class LogAnalyzer:
                         level = self.extract_log_level(line)
                         if level:
                             distribution[service][level] += 1
-        
+
         return self.calculate_percentages(distribution)
-    
+
     def analyze_log_volume(self, time_window: int = 3600) -> Dict:
         """Analyze log volume metrics"""
         volume_metrics = {
@@ -213,19 +213,19 @@ class LogAnalyzer:
             'by_level': Counter(),
             'peak_times': []
         }
-        
+
         end_time = datetime.now()
         start_time = end_time - timedelta(seconds=time_window)
-        
+
         for service in self.services:
             service_metrics = self.calculate_service_volume(service, start_time, end_time)
             volume_metrics['by_service'][service] = service_metrics
             volume_metrics['total_lines'] += service_metrics['lines']
-            
+
         volume_metrics['lines_per_second'] = volume_metrics['total_lines'] / time_window
-        
+
         return volume_metrics
-    
+
     def analyze_performance_logs(self) -> Dict:
         """Extract and analyze performance metrics from logs"""
         perf_metrics = {
@@ -236,12 +236,12 @@ class LogAnalyzer:
             'slow_queries': [],
             'memory_spikes': []
         }
-        
+
         # Pattern for FastAPI response times
         response_pattern = r'Response time: (\d+\.?\d*)ms'
         query_pattern = r'Query executed in (\d+\.?\d*)ms'
         memory_pattern = r'Memory usage: (\d+\.?\d*)MB'
-        
+
         for log_file in Path("/var/log/mobius/api").glob("*.log"):
             with open(log_file, 'r') as f:
                 for line in f:
@@ -255,12 +255,12 @@ class LogAnalyzer:
                                 'time': time_ms,
                                 'context': line.strip()
                             })
-                    
+
                     # Extract query times
                     match = re.search(query_pattern, line)
                     if match:
                         perf_metrics['query_times'].append(float(match.group(1)))
-                    
+
                     # Extract memory usage
                     match = re.search(memory_pattern, line)
                     if match:
@@ -271,7 +271,7 @@ class LogAnalyzer:
                                 'usage': memory_mb,
                                 'context': line.strip()
                             })
-        
+
         return self.calculate_performance_stats(perf_metrics)
 ```
 
@@ -280,7 +280,7 @@ class LogAnalyzer:
 ```python
 class SecurityEventDetector:
     """Detect security-related events in logs"""
-    
+
     def __init__(self):
         self.security_patterns = {
             'auth_failure': r'(Authentication failed|Invalid credentials|JWT expired)',
@@ -290,11 +290,11 @@ class SecurityEventDetector:
             'api_abuse': r'(Rate limit exceeded|Unusual API pattern|DDoS)',
             'injection_attempt': r'(SQL injection|XSS attempt|Command injection)'
         }
-        
+
     def scan_security_events(self) -> Dict[str, List[Dict]]:
         """Scan logs for security events"""
         security_events = defaultdict(list)
-        
+
         for log_file in Path("/var/log/mobius").rglob("*.log"):
             with open(log_file, 'r') as f:
                 for line in f:
@@ -303,25 +303,25 @@ class SecurityEventDetector:
                             event = self.parse_security_event(line, event_type)
                             if event:
                                 security_events[event_type].append(event)
-        
+
         return self.analyze_security_patterns(security_events)
-    
+
     def detect_anomalies(self) -> List[Dict]:
         """Detect anomalous security patterns"""
         anomalies = []
-        
+
         # Detect rapid authentication failures
         auth_failures = self.get_events_by_type('auth_failure')
         anomalies.extend(self.detect_rapid_failures(auth_failures))
-        
+
         # Detect unusual access patterns
         access_events = self.get_events_by_type('data_access')
         anomalies.extend(self.detect_unusual_access(access_events))
-        
+
         # Detect potential attacks
         attack_events = self.get_events_by_type('injection_attempt')
         anomalies.extend(self.detect_attack_patterns(attack_events))
-        
+
         return sorted(anomalies, key=lambda x: x['risk_score'], reverse=True)
 ```
 
@@ -332,7 +332,7 @@ class SecurityEventDetector:
 ```python
 class FastAPIMonitor:
     """Monitor FastAPI application errors"""
-    
+
     def __init__(self):
         self.exception_types = {
             'HTTPException': 'http',
@@ -341,7 +341,7 @@ class FastAPIMonitor:
             'TimeoutError': 'timeout',
             'AuthenticationError': 'auth'
         }
-        
+
     def track_exceptions(self) -> Dict:
         """Track FastAPI exceptions"""
         exceptions = defaultdict(lambda: {
@@ -350,7 +350,7 @@ class FastAPIMonitor:
             'status_codes': Counter(),
             'recent_examples': []
         })
-        
+
         api_logs = Path("/var/log/mobius/api").glob("*.log")
         for log_file in api_logs:
             with open(log_file, 'r') as f:
@@ -361,16 +361,16 @@ class FastAPIMonitor:
                         exceptions[exc_type]['count'] += 1
                         exceptions[exc_type]['endpoints'][exception_info['endpoint']] += 1
                         exceptions[exc_type]['status_codes'][exception_info['status_code']] += 1
-                        
+
                         if len(exceptions[exc_type]['recent_examples']) < 5:
                             exceptions[exc_type]['recent_examples'].append({
                                 'timestamp': exception_info['timestamp'],
                                 'message': exception_info['message'],
                                 'endpoint': exception_info['endpoint']
                             })
-        
+
         return dict(exceptions)
-    
+
     def analyze_endpoint_errors(self) -> Dict[str, Dict]:
         """Analyze errors by API endpoint"""
         endpoint_errors = defaultdict(lambda: {
@@ -379,31 +379,31 @@ class FastAPIMonitor:
             'error_types': Counter(),
             'avg_response_time': 0
         })
-        
+
         # Parse API access logs
         access_logs = Path("/var/log/mobius/api/access.log")
         if access_logs.exists():
             total_requests = defaultdict(int)
             error_requests = defaultdict(int)
-            
+
             with open(access_logs, 'r') as f:
                 for line in f:
                     log_entry = self.parse_access_log(line)
                     if log_entry:
                         endpoint = log_entry['endpoint']
                         total_requests[endpoint] += 1
-                        
+
                         if log_entry['status'] >= 400:
                             error_requests[endpoint] += 1
                             endpoint_errors[endpoint]['total_errors'] += 1
                             endpoint_errors[endpoint]['error_types'][log_entry['status']] += 1
-            
+
             # Calculate error rates
             for endpoint in total_requests:
                 if total_requests[endpoint] > 0:
                     error_rate = error_requests[endpoint] / total_requests[endpoint]
                     endpoint_errors[endpoint]['error_rate'] = error_rate
-        
+
         return dict(endpoint_errors)
 ```
 
@@ -412,11 +412,11 @@ class FastAPIMonitor:
 ```python
 class ReactErrorMonitor:
     """Monitor React frontend errors"""
-    
+
     def __init__(self):
         self.error_boundaries = []
         self.browser_logs = Path("/var/log/mobius/frontend/browser.log")
-        
+
     def analyze_error_boundaries(self) -> Dict:
         """Analyze React error boundary catches"""
         boundary_errors = {
@@ -426,7 +426,7 @@ class ReactErrorMonitor:
             'recovery_success': 0,
             'user_impact': []
         }
-        
+
         if self.browser_logs.exists():
             with open(self.browser_logs, 'r') as f:
                 for line in f:
@@ -436,18 +436,18 @@ class ReactErrorMonitor:
                             boundary_errors['total_catches'] += 1
                             boundary_errors['by_component'][error_info['component']] += 1
                             boundary_errors['by_error_type'][error_info['error_type']] += 1
-                            
+
                             if error_info['recovered']:
                                 boundary_errors['recovery_success'] += 1
-                            
+
                             if error_info['user_visible']:
                                 boundary_errors['user_impact'].append({
                                     'component': error_info['component'],
                                     'impact': error_info['impact_description']
                                 })
-        
+
         return boundary_errors
-    
+
     def track_client_errors(self) -> Dict:
         """Track client-side JavaScript errors"""
         client_errors = {
@@ -458,16 +458,16 @@ class ReactErrorMonitor:
             'by_browser': Counter(),
             'by_page': Counter()
         }
-        
+
         # Parse browser console logs
         console_pattern = r'\[(.*?)\] (.*Error): (.*) at (.*)'
-        
+
         with open(self.browser_logs, 'r') as f:
             for line in f:
                 match = re.match(console_pattern, line)
                 if match:
                     timestamp, error_type, message, location = match.groups()
-                    
+
                     error_entry = {
                         'timestamp': timestamp,
                         'type': error_type,
@@ -475,7 +475,7 @@ class ReactErrorMonitor:
                         'location': location,
                         'user_agent': self.extract_user_agent(line)
                     }
-                    
+
                     if 'SyntaxError' in error_type:
                         client_errors['syntax_errors'].append(error_entry)
                     elif 'NetworkError' in error_type or 'Failed to fetch' in message:
@@ -484,15 +484,15 @@ class ReactErrorMonitor:
                         client_errors['promise_rejections'].append(error_entry)
                     else:
                         client_errors['runtime_errors'].append(error_entry)
-                    
+
                     # Track by browser
                     browser = self.detect_browser(error_entry['user_agent'])
                     client_errors['by_browser'][browser] += 1
-                    
+
                     # Track by page
                     page = self.extract_page_from_location(location)
                     client_errors['by_page'][page] += 1
-        
+
         return client_errors
 ```
 
@@ -501,10 +501,10 @@ class ReactErrorMonitor:
 ```python
 class DatabaseErrorMonitor:
     """Monitor database-related errors"""
-    
+
     def __init__(self):
         self.db_types = ['postgresql', 'qdrant', 'pinecone', 'redis']
-        
+
     def analyze_database_errors(self) -> Dict:
         """Analyze database error patterns"""
         db_errors = {
@@ -515,7 +515,7 @@ class DatabaseErrorMonitor:
             'deadlocks': defaultdict(list),
             'performance_issues': defaultdict(list)
         }
-        
+
         for db_type in self.db_types:
             log_path = Path(f"/var/log/mobius/{db_type}")
             if log_path.exists():
@@ -526,26 +526,26 @@ class DatabaseErrorMonitor:
                             if error_category:
                                 error_info = self.parse_db_error(line, db_type)
                                 db_errors[error_category][db_type].append(error_info)
-        
+
         return self.generate_db_error_summary(db_errors)
-    
+
     def detect_connection_pool_issues(self) -> List[Dict]:
         """Detect connection pool exhaustion and leaks"""
         pool_issues = []
-        
+
         # PostgreSQL connection pool monitoring
         pg_logs = Path("/var/log/mobius/postgresql/postgresql.log")
         if pg_logs.exists():
             with open(pg_logs, 'r') as f:
                 connection_count = 0
                 max_connections = 100  # From config
-                
+
                 for line in f:
                     if 'connection authorized' in line:
                         connection_count += 1
                     elif 'disconnection' in line:
                         connection_count -= 1
-                    
+
                     if connection_count > max_connections * 0.8:
                         pool_issues.append({
                             'type': 'pool_exhaustion',
@@ -553,7 +553,7 @@ class DatabaseErrorMonitor:
                             'usage': connection_count / max_connections,
                             'timestamp': self.extract_timestamp(line)
                         })
-        
+
         return pool_issues
 ```
 
@@ -562,7 +562,7 @@ class DatabaseErrorMonitor:
 ```python
 class ExternalAPIMonitor:
     """Monitor external API integrations"""
-    
+
     def __init__(self):
         self.external_apis = {
             'openai': 'https://api.openai.com',
@@ -571,7 +571,7 @@ class ExternalAPIMonitor:
             'gitlab': 'https://gitlab.com/api',
             'slack': 'https://slack.com/api'
         }
-        
+
     def track_api_failures(self) -> Dict:
         """Track external API failures and patterns"""
         api_failures = defaultdict(lambda: {
@@ -582,7 +582,7 @@ class ExternalAPIMonitor:
             'avg_response_time': [],
             'recent_failures': []
         })
-        
+
         # Parse API client logs
         api_logs = Path("/var/log/mobius/api/external_calls.log")
         if api_logs.exists():
@@ -595,16 +595,16 @@ class ExternalAPIMonitor:
                             api_failures[api_name]['total_failures'] += 1
                             api_failures[api_name]['status_codes'][api_call['status_code']] += 1
                             api_failures[api_name]['error_types'][api_call['error_type']] += 1
-                            
+
                             if len(api_failures[api_name]['recent_failures']) < 10:
                                 api_failures[api_name]['recent_failures'].append({
                                     'timestamp': api_call['timestamp'],
                                     'endpoint': api_call['endpoint'],
                                     'error': api_call['error_message']
                                 })
-        
+
         return dict(api_failures)
-    
+
     def analyze_retry_patterns(self) -> Dict:
         """Analyze API retry patterns and effectiveness"""
         retry_analysis = {
@@ -614,21 +614,21 @@ class ExternalAPIMonitor:
             'exponential_backoff_compliance': 0,
             'circuit_breaker_triggers': []
         }
-        
+
         retry_pattern = r'Retry attempt (\d+) for (.*) after (\d+)ms'
         success_pattern = r'Retry successful for (.*) after (\d+) attempts'
         circuit_pattern = r'Circuit breaker opened for (.*)'
-        
+
         with open("/var/log/mobius/api/external_calls.log", 'r') as f:
             current_retry_chain = None
-            
+
             for line in f:
                 # Track retry attempts
                 retry_match = re.search(retry_pattern, line)
                 if retry_match:
                     attempt, endpoint, delay = retry_match.groups()
                     retry_analysis['total_retries'] += 1
-                    
+
                     if current_retry_chain and current_retry_chain['endpoint'] == endpoint:
                         current_retry_chain['attempts'].append({
                             'attempt': int(attempt),
@@ -640,7 +640,7 @@ class ExternalAPIMonitor:
                             'attempts': [{'attempt': int(attempt), 'delay': int(delay)}],
                             'success': False
                         }
-                
+
                 # Track successful retries
                 success_match = re.search(success_pattern, line)
                 if success_match:
@@ -649,7 +649,7 @@ class ExternalAPIMonitor:
                         current_retry_chain['success'] = True
                         retry_analysis['retry_chains'].append(current_retry_chain)
                         current_retry_chain = None
-                
+
                 # Track circuit breaker triggers
                 circuit_match = re.search(circuit_pattern, line)
                 if circuit_match:
@@ -658,7 +658,7 @@ class ExternalAPIMonitor:
                         'api': api_name,
                         'timestamp': self.extract_timestamp(line)
                     })
-        
+
         return retry_analysis
 ```
 
@@ -669,7 +669,7 @@ class ExternalAPIMonitor:
 ```python
 class ErrorThresholdMonitor:
     """Monitor error thresholds and trigger alerts"""
-    
+
     def __init__(self):
         self.thresholds = {
             'error_rate': {
@@ -689,11 +689,11 @@ class ErrorThresholdMonitor:
                 'critical': 50    # 50 errors per minute
             }
         }
-        
+
     def check_thresholds(self) -> List[Dict]:
         """Check all thresholds and return violations"""
         violations = []
-        
+
         # Check error rate threshold
         error_rate = self.calculate_current_error_rate()
         if error_rate > self.thresholds['error_rate']['critical']:
@@ -712,7 +712,7 @@ class ErrorThresholdMonitor:
                 'threshold': self.thresholds['error_rate']['warning'],
                 'message': f'High error rate: {error_rate:.2%}'
             })
-        
+
         # Check response time threshold
         avg_response_time = self.calculate_avg_response_time()
         if avg_response_time > self.thresholds['response_time']['critical']:
@@ -723,7 +723,7 @@ class ErrorThresholdMonitor:
                 'threshold': self.thresholds['response_time']['critical'],
                 'message': f'Critical response time: {avg_response_time}ms'
             })
-        
+
         # Check memory usage
         memory_usage = self.get_current_memory_usage()
         if memory_usage > self.thresholds['memory_usage']['critical']:
@@ -734,9 +734,9 @@ class ErrorThresholdMonitor:
                 'threshold': self.thresholds['memory_usage']['critical'],
                 'message': f'Critical memory usage: {memory_usage:.1%}'
             })
-        
+
         return violations
-    
+
     def create_alert(self, violation: Dict) -> Dict:
         """Create alert for threshold violation"""
         alert = {
@@ -750,7 +750,7 @@ class ErrorThresholdMonitor:
             'recommended_actions': self.get_recommended_actions(violation),
             'notification_channels': self.get_notification_channels(violation['severity'])
         }
-        
+
         return alert
 ```
 
@@ -759,7 +759,7 @@ class ErrorThresholdMonitor:
 ```python
 class ErrorReportGenerator:
     """Generate comprehensive error reports"""
-    
+
     def __init__(self):
         self.report_template = """
 # Mobius Error Analysis Report
@@ -787,7 +787,7 @@ Period: {start_time} to {end_time}
 ## Detailed Analysis
 {detailed_analysis}
 """
-        
+
     def generate_report(self, time_range: Tuple[datetime, datetime]) -> str:
         """Generate comprehensive error report"""
         # Collect all metrics
@@ -795,21 +795,21 @@ Period: {start_time} to {end_time}
         log_analyzer = LogAnalyzer()
         db_monitor = DatabaseErrorMonitor()
         api_monitor = ExternalAPIMonitor()
-        
+
         # Analyze errors
         error_freq = error_analyzer.analyze_error_frequency(time_range)
         error_trends = error_analyzer.detect_error_trends()
         stack_traces = error_analyzer.analyze_stack_traces()
-        
+
         # Analyze performance
         perf_logs = log_analyzer.analyze_performance_logs()
-        
+
         # Analyze databases
         db_errors = db_monitor.analyze_database_errors()
-        
+
         # Analyze external APIs
         api_failures = api_monitor.track_api_failures()
-        
+
         # Generate report sections
         report_data = {
             'timestamp': datetime.now().isoformat(),
@@ -828,9 +828,9 @@ Period: {start_time} to {end_time}
                 error_freq, error_trends, stack_traces, db_errors, api_failures
             )
         }
-        
+
         return self.report_template.format(**report_data)
-    
+
     def generate_html_report(self, report_data: Dict) -> str:
         """Generate HTML version of error report with charts"""
         html_template = """
@@ -841,7 +841,7 @@ Period: {start_time} to {end_time}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {{ font-family: Arial, sans-serif; margin: 20px; }}
-        .metric {{ display: inline-block; margin: 10px; padding: 20px; 
+        .metric {{ display: inline-block; margin: 10px; padding: 20px;
                    border: 1px solid #ddd; border-radius: 5px; }}
         .critical {{ background-color: #fee; }}
         .warning {{ background-color: #ffd; }}
@@ -854,7 +854,7 @@ Period: {start_time} to {end_time}
 <body>
     <h1>Mobius Error Analysis Report</h1>
     <p>Generated: {timestamp}</p>
-    
+
     <div class="metrics">
         <div class="metric {error_severity}">
             <h3>Error Rate</h3>
@@ -869,15 +869,15 @@ Period: {start_time} to {end_time}
             <p>{critical_count}</p>
         </div>
     </div>
-    
+
     <div class="chart-container">
         <canvas id="errorTrendChart"></canvas>
     </div>
-    
+
     <div class="chart-container">
         <canvas id="errorTypeChart"></canvas>
     </div>
-    
+
     <h2>Top Issues</h2>
     <table>
         <tr>
@@ -888,10 +888,10 @@ Period: {start_time} to {end_time}
         </tr>
         {error_table_rows}
     </table>
-    
+
     <h2>Recommendations</h2>
     {recommendations_html}
-    
+
     <script>
         // Error trend chart
         const trendCtx = document.getElementById('errorTrendChart').getContext('2d');
@@ -908,7 +908,7 @@ Period: {start_time} to {end_time}
                 }}
             }}
         }});
-        
+
         // Error type distribution
         const typeCtx = document.getElementById('errorTypeChart').getContext('2d');
         new Chart(typeCtx, {{
@@ -928,7 +928,7 @@ Period: {start_time} to {end_time}
 </body>
 </html>
 """
-        
+
         return html_template.format(**report_data)
 ```
 
@@ -937,41 +937,41 @@ Period: {start_time} to {end_time}
 ```python
 class ErrorCorrelationAnalyzer:
     """Analyze correlations between different error types"""
-    
+
     def __init__(self):
         self.correlation_window = 300  # 5 minutes
-        
+
     def analyze_error_correlations(self) -> Dict:
         """Find correlations between different error types"""
         error_events = self.collect_error_events()
-        
+
         correlations = {
             'temporal_correlations': self.find_temporal_correlations(error_events),
             'causal_chains': self.identify_causal_chains(error_events),
             'service_correlations': self.find_service_correlations(error_events),
             'user_impact_correlations': self.analyze_user_impact(error_events)
         }
-        
+
         return correlations
-    
+
     def find_temporal_correlations(self, events: List[Dict]) -> List[Dict]:
         """Find errors that tend to occur together"""
         correlations = []
-        
+
         # Sort events by timestamp
         sorted_events = sorted(events, key=lambda x: x['timestamp'])
-        
+
         # Look for patterns within time windows
         for i, event in enumerate(sorted_events):
             window_start = event['timestamp']
             window_end = window_start + timedelta(seconds=self.correlation_window)
-            
+
             # Find all events in the same window
             window_events = [
                 e for e in sorted_events[i+1:]
                 if window_start <= e['timestamp'] <= window_end
             ]
-            
+
             if len(window_events) >= 2:
                 # Calculate correlation strength
                 correlation = {
@@ -982,9 +982,9 @@ class ErrorCorrelationAnalyzer:
                     'examples': [event] + window_events[:3]
                 }
                 correlations.append(correlation)
-        
+
         return self.aggregate_correlations(correlations)
-    
+
     def identify_causal_chains(self, events: List[Dict]) -> List[Dict]:
         """Identify potential causal relationships between errors"""
         causal_patterns = [
@@ -1004,23 +1004,23 @@ class ErrorCorrelationAnalyzer:
                 'delay': 60
             }
         ]
-        
+
         causal_chains = []
-        
+
         for pattern in causal_patterns:
             cause_events = [e for e in events if pattern['cause'] in e['type']]
-            
+
             for cause_event in cause_events:
                 # Look for effect events within the delay window
                 effect_window_start = cause_event['timestamp']
                 effect_window_end = effect_window_start + timedelta(seconds=pattern['delay'])
-                
+
                 effect_events = [
                     e for e in events
                     if any(effect in e['type'] for effect in pattern['effects'])
                     and effect_window_start <= e['timestamp'] <= effect_window_end
                 ]
-                
+
                 if effect_events:
                     causal_chains.append({
                         'cause': cause_event,
@@ -1028,7 +1028,7 @@ class ErrorCorrelationAnalyzer:
                         'pattern': pattern,
                         'confidence': len(effect_events) / len(pattern['effects'])
                     })
-        
+
         return causal_chains
 ```
 
@@ -1037,7 +1037,7 @@ class ErrorCorrelationAnalyzer:
 ```python
 class RootCauseSuggester:
     """Suggest potential root causes for errors"""
-    
+
     def __init__(self):
         self.knowledge_base = {
             'database_connection': {
@@ -1092,7 +1092,7 @@ class RootCauseSuggester:
                 ]
             }
         }
-        
+
     def suggest_root_causes(self, error_pattern: Dict) -> Dict:
         """Suggest potential root causes based on error patterns"""
         suggestions = {
@@ -1103,28 +1103,28 @@ class RootCauseSuggester:
             'related_metrics': [],
             'historical_solutions': []
         }
-        
+
         # Match error pattern to knowledge base
         for error_type, knowledge in self.knowledge_base.items():
             symptom_match = sum(
                 1 for symptom in knowledge['symptoms']
                 if symptom.lower() in error_pattern['message'].lower()
             )
-            
+
             if symptom_match > 0:
                 match_confidence = symptom_match / len(knowledge['symptoms'])
-                
+
                 if match_confidence > suggestions['confidence']:
                     suggestions['confidence'] = match_confidence
                     suggestions['potential_causes'] = knowledge['potential_causes']
                     suggestions['diagnostic_steps'] = knowledge['diagnostic_steps']
-        
+
         # Add contextual information
         suggestions['related_metrics'] = self.get_related_metrics(error_pattern)
         suggestions['historical_solutions'] = self.find_historical_solutions(error_pattern)
-        
+
         return suggestions
-    
+
     def generate_diagnostic_script(self, error_type: str) -> str:
         """Generate diagnostic script for specific error type"""
         scripts = {
@@ -1139,16 +1139,16 @@ psql -h $DB_HOST -p $DB_PORT -U $DB_USER -c "SELECT count(*) FROM pg_stat_activi
 
 echo "Checking active connections..."
 psql -h $DB_HOST -p $DB_PORT -U $DB_USER -c "
-SELECT pid, usename, application_name, client_addr, state, 
-       state_change, query_start, query 
-FROM pg_stat_activity 
-WHERE state != 'idle' 
+SELECT pid, usename, application_name, client_addr, state,
+       state_change, query_start, query
+FROM pg_stat_activity
+WHERE state != 'idle'
 ORDER BY query_start;"
 
 echo "Checking for long-running queries..."
 psql -h $DB_HOST -p $DB_PORT -U $DB_USER -c "
-SELECT pid, now() - pg_stat_activity.query_start AS duration, query 
-FROM pg_stat_activity 
+SELECT pid, now() - pg_stat_activity.query_start AS duration, query
+FROM pg_stat_activity
 WHERE (now() - pg_stat_activity.query_start) > interval '5 minutes';"
 ''',
             'memory_error': '''#!/bin/bash
@@ -1191,13 +1191,13 @@ done
 
 echo "Database query performance..."
 psql -h $DB_HOST -p $DB_PORT -U $DB_USER -c "
-SELECT query, mean_exec_time, calls 
-FROM pg_stat_statements 
-ORDER BY mean_exec_time DESC 
+SELECT query, mean_exec_time, calls
+FROM pg_stat_statements
+ORDER BY mean_exec_time DESC
 LIMIT 10;"
 '''
         }
-        
+
         return scripts.get(error_type, '# No diagnostic script available')
 ```
 
@@ -1207,7 +1207,7 @@ LIMIT 10;"
 def main():
     """Main execution function for error tracking"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description='Mobius Error Tracking and Analysis')
     parser.add_argument('--since', default='1 hour ago', help='Start time for analysis')
     parser.add_argument('--until', default='now', help='End time for analysis')
@@ -1217,44 +1217,44 @@ def main():
     parser.add_argument('--output', help='Output file for report')
     parser.add_argument('--monitor', action='store_true', help='Real-time monitoring mode')
     parser.add_argument('--threshold', choices=['warning', 'critical'], help='Alert threshold')
-    
+
     args = parser.parse_args()
-    
+
     # Parse time range
     start_time = parse_time_string(args.since)
     end_time = parse_time_string(args.until)
     time_range = (start_time, end_time)
-    
+
     if args.monitor:
         # Real-time monitoring mode
         monitor = ErrorThresholdMonitor()
         print("Starting real-time error monitoring...")
         print(f"Alert threshold: {args.threshold or 'all'}")
         print("Press Ctrl+C to stop\n")
-        
+
         try:
             while True:
                 violations = monitor.check_thresholds()
-                
+
                 for violation in violations:
                     if not args.threshold or violation['severity'] == args.threshold:
                         alert = monitor.create_alert(violation)
                         print(f"[{alert['timestamp']}] {alert['severity'].upper()}: {alert['message']}")
-                        
+
                         # Send notifications
                         for channel in alert['notification_channels']:
                             send_notification(channel, alert)
-                
+
                 time.sleep(60)  # Check every minute
-                
+
         except KeyboardInterrupt:
             print("\nStopping monitoring...")
-    
+
     elif args.report:
         # Generate comprehensive report
         print("Generating error analysis report...")
         generator = ErrorReportGenerator()
-        
+
         if args.output and args.output.endswith('.html'):
             # Generate HTML report
             report_data = generator.collect_report_data(time_range)
@@ -1262,68 +1262,68 @@ def main():
         else:
             # Generate text report
             report_content = generator.generate_report(time_range)
-        
+
         if args.output:
             with open(args.output, 'w') as f:
                 f.write(report_content)
             print(f"Report saved to: {args.output}")
         else:
             print(report_content)
-    
+
     else:
         # Interactive analysis mode
         analyzer = ErrorAnalyzer()
-        
+
         print("Analyzing errors...")
         error_freq = analyzer.analyze_error_frequency(time_range)
-        
+
         # Filter by error type if specified
         if args.error_type:
             error_freq = {
-                k: v for k, v in error_freq.items() 
+                k: v for k, v in error_freq.items()
                 if args.error_type.lower() in k.lower()
             }
-        
+
         # Display results
         print(f"\nError Analysis ({args.since} to {args.until}):")
         print("=" * 60)
-        
-        for error_type, data in sorted(error_freq.items(), 
-                                     key=lambda x: x[1]['count'], 
+
+        for error_type, data in sorted(error_freq.items(),
+                                     key=lambda x: x[1]['count'],
                                      reverse=True):
             print(f"\n{error_type}:")
             print(f"  Total: {data['count']}")
             print(f"  Severity distribution: {dict(data['severity'])}")
-            
+
             if data['recent_examples']:
                 print("  Recent examples:")
                 for example in data['recent_examples'][:3]:
                     print(f"    - {example}")
-        
+
         # Analyze correlations
         print("\n\nError Correlations:")
         print("=" * 60)
         correlator = ErrorCorrelationAnalyzer()
         correlations = correlator.analyze_error_correlations()
-        
+
         for correlation in correlations['temporal_correlations'][:5]:
             print(f"\n{correlation['primary_error']} often followed by:")
             for error in correlation['correlated_errors']:
                 print(f"  - {error}")
             print(f"  Correlation strength: {correlation['correlation_strength']:.2f}")
-        
+
         # Suggest root causes
         print("\n\nRoot Cause Analysis:")
         print("=" * 60)
         suggester = RootCauseSuggester()
-        
+
         for error_type, data in list(error_freq.items())[:3]:
             if data['count'] > 10:  # Only analyze frequent errors
                 suggestions = suggester.suggest_root_causes({
                     'type': error_type,
                     'message': data['recent_examples'][0] if data['recent_examples'] else ''
                 })
-                
+
                 print(f"\n{error_type}:")
                 print(f"  Confidence: {suggestions['confidence']:.2f}")
                 print("  Potential causes:")
@@ -1338,20 +1338,20 @@ def parse_time_string(time_str: str) -> datetime:
     """Parse human-readable time strings"""
     if time_str == 'now':
         return datetime.now()
-    
+
     # Parse relative times like "1 hour ago"
     match = re.match(r'(\d+)\s+(hour|minute|day)s?\s+ago', time_str)
     if match:
         amount = int(match.group(1))
         unit = match.group(2)
-        
+
         if unit == 'hour':
             return datetime.now() - timedelta(hours=amount)
         elif unit == 'minute':
             return datetime.now() - timedelta(minutes=amount)
         elif unit == 'day':
             return datetime.now() - timedelta(days=amount)
-    
+
     # Try to parse as ISO format
     try:
         return datetime.fromisoformat(time_str)
@@ -1377,12 +1377,12 @@ def send_notification(channel: str, alert: Dict):
                     ]
                 }]
             })
-    
+
     elif channel == 'email':
         # Send email alert
         # Implementation depends on email service configuration
         pass
-    
+
     elif channel == 'pagerduty':
         # Send to PagerDuty
         # Implementation depends on PagerDuty configuration
@@ -1429,7 +1429,7 @@ class SentryErrorTracker:
 from prometheus_client import Counter, Histogram, Gauge
 
 # Define metrics
-error_counter = Counter('mobius_errors_total', 
+error_counter = Counter('mobius_errors_total',
                        'Total number of errors',
                        ['service', 'error_type', 'severity'])
 
@@ -1460,7 +1460,7 @@ class ElasticsearchErrorTracker:
     def __init__(self):
         self.es = Elasticsearch(['http://localhost:9200'])
         self.index_name = 'mobius-errors'
-        
+
     def index_error(self, error_info: Dict):
         """Index error in Elasticsearch"""
         doc = {
@@ -1474,19 +1474,19 @@ class ElasticsearchErrorTracker:
             'request_id': error_info.get('request_id'),
             'environment': 'production'
         }
-        
+
         self.es.index(
             index=self.index_name,
             body=doc
         )
-    
+
     def search_errors(self, query: Dict) -> List[Dict]:
         """Search errors in Elasticsearch"""
         results = self.es.search(
             index=self.index_name,
             body=query
         )
-        
+
         return [hit['_source'] for hit in results['hits']['hits']]
 ```
 

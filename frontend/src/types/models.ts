@@ -73,12 +73,12 @@ export interface Activity {
   timestamp: string;
 }
 
-export type ActivityAction = 
-  | 'created' 
-  | 'updated' 
-  | 'deleted' 
-  | 'shared' 
-  | 'exported' 
+export type ActivityAction =
+  | 'created'
+  | 'updated'
+  | 'deleted'
+  | 'shared'
+  | 'exported'
   | 'imported'
   | 'duplicated';
 

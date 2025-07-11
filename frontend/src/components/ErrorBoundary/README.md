@@ -74,7 +74,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 
 function ContextBuilder() {
   return (
-    <ErrorBoundary 
+    <ErrorBoundary
       isolationLevel="feature"
       fallback={<div>Context Builder is temporarily unavailable</div>}
     >
@@ -133,12 +133,12 @@ import { useErrorReset } from '@/components/ErrorBoundary';
 
 function CustomErrorBoundary({ children }) {
   const [hasError, setHasError] = useState(false);
-  
+
   useErrorReset(
     () => setHasError(false),
     hasError // Only reset when there's an error
   );
-  
+
   // Error boundary implementation
 }
 ```
@@ -152,7 +152,7 @@ import { useManualErrorReset } from '@/components/ErrorBoundary';
 
 function ErrorDisplay() {
   const resetError = useManualErrorReset(500); // 500ms delay
-  
+
   return (
     <button onClick={resetError}>
       Reset Application
@@ -206,11 +206,11 @@ VITE_ERROR_SERVICE_ENDPOINT=https://api.example.com/errors
 // Test component that throws an error
 function ErrorTest() {
   const [shouldError, setShouldError] = useState(false);
-  
+
   if (shouldError) {
     throw new Error('Test error');
   }
-  
+
   return (
     <button onClick={() => setShouldError(true)}>
       Trigger Error
@@ -223,4 +223,3 @@ function ErrorTest() {
   <ErrorTest />
 </ErrorBoundary>
 ```
-

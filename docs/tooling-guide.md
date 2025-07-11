@@ -339,10 +339,10 @@ clean:
    ```bash
    # Install Python dependencies
    poetry install
-   
+
    # Install Node dependencies
    cd frontend && npm install
-   
+
    # Start development environment
    make dev
    ```
@@ -357,7 +357,7 @@ clean:
    ```bash
    # Run all checks
    make lint test
-   
+
    # Fix issues
    make format
    ```

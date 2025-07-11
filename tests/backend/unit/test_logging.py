@@ -639,9 +639,7 @@ class TestRequestResponseLogging:
         setup_logging(log_config, environment="development")
         client = TestClient(app)
 
-        response = client.get(
-            "/success?param=value", headers={"User-Agent": "TestClient"}
-        )
+        client.get("/success?param=value", headers={"User-Agent": "TestClient"})
 
         # Find request log
         request_log = next(
@@ -680,7 +678,7 @@ class TestRequestResponseLogging:
         setup_logging(log_config, environment="development")
         client = TestClient(app)
 
-        response = client.get("/success")
+        client.get("/success")
 
         # Find response log
         response_log = next(
@@ -866,7 +864,7 @@ class TestPerformanceTracking:
             logger_factory=structlog.stdlib.LoggerFactory(),
         )
 
-        response = client.get("/slow")
+        client.get("/slow")
 
         # Find response log
         response_log = next(

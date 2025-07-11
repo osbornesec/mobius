@@ -64,7 +64,7 @@ logger = logging.getLogger(__name__)
 
 class CodeFileHandler(FileSystemEventHandler):
     """Handles file system events for code files"""
-    
+
     def __init__(
         self,
         file_queue: asyncio.Queue,
@@ -73,22 +73,22 @@ class CodeFileHandler(FileSystemEventHandler):
         self.file_queue = file_queue
         self.supported_extensions = supported_extensions
         self._seen_files: Set[Path] = set()
-        
+
     def on_created(self, event: FileSystemEvent) -> None:
         if not event.is_directory:
             self._process_file(event.src_path)
-            
+
     def on_modified(self, event: FileSystemEvent) -> None:
         if not event.is_directory:
             self._process_file(event.src_path)
-            
+
     def _process_file(self, file_path: str) -> None:
         path = Path(file_path)
-        
+
         # Check if file is supported
         if path.suffix not in self.supported_extensions:
             return
-            
+
         # Check file size
         try:
             if path.stat().st_size > MAX_FILE_SIZE:
@@ -96,7 +96,7 @@ class CodeFileHandler(FileSystemEventHandler):
                 return
         except OSError:
             return
-            
+
         # Add to queue for processing
         asyncio.create_task(self.file_queue.put({
             'path': path,
@@ -105,31 +105,31 @@ class CodeFileHandler(FileSystemEventHandler):
 
 class FileWatcher:
     """Watches directories for file changes"""
-    
+
     def __init__(self, ingestion_service: 'IngestionService'):
         self.ingestion_service = ingestion_service
         self.observer = Observer()
         self.file_queue = asyncio.Queue(maxsize=1000)
-        
+
     async def start(self, watch_paths: List[Path]) -> None:
         """Start watching specified paths"""
         handler = CodeFileHandler(
             self.file_queue,
             self._get_supported_extensions()
         )
-        
+
         for path in watch_paths:
             self.observer.schedule(
                 handler,
                 str(path),
                 recursive=True
             )
-            
+
         self.observer.start()
-        
+
         # Start queue processor
         asyncio.create_task(self._process_queue())
-        
+
     async def _process_queue(self) -> None:
         """Process files from the queue"""
         while True:
@@ -140,7 +140,7 @@ class FileWatcher:
                 )
             except Exception as e:
                 logger.error(f"Error processing file: {e}")
-                
+
     def _get_supported_extensions(self) -> Set[str]:
         """Get all supported file extensions"""
         extensions = set()
@@ -162,7 +162,7 @@ logger = logging.getLogger(__name__)
 
 class BatchProcessor:
     """Processes files in batches for efficiency"""
-    
+
     def __init__(
         self,
         batch_size: int = 50,
@@ -172,47 +172,47 @@ class BatchProcessor:
         self.batch_timeout = batch_timeout
         self.current_batch: List[Path] = []
         self.batch_lock = asyncio.Lock()
-        
+
     async def add_file(self, file_path: Path) -> None:
         """Add file to current batch"""
         async with self.batch_lock:
             self.current_batch.append(file_path)
-            
+
             if len(self.current_batch) >= self.batch_size:
                 await self._process_batch()
-                
+
     async def _process_batch(self) -> None:
         """Process current batch of files"""
         if not self.current_batch:
             return
-            
+
         batch = self.current_batch[:]
         self.current_batch = []
-        
+
         try:
             # Process files in parallel
             tasks = [
                 self._process_single_file(file_path)
                 for file_path in batch
             ]
-            
+
             results = await asyncio.gather(
                 *tasks,
                 return_exceptions=True
             )
-            
+
             # Log results
             successful = sum(
-                1 for r in results 
+                1 for r in results
                 if not isinstance(r, Exception)
             )
             logger.info(
                 f"Batch processed: {successful}/{len(batch)} files"
             )
-            
+
         except Exception as e:
             logger.error(f"Batch processing error: {e}")
-            
+
     async def _process_single_file(self, file_path: Path) -> Dict:
         """Process a single file"""
         # Implementation in next sections
@@ -234,7 +234,7 @@ T = TypeVar('T')
 
 class RetryConfig:
     """Configuration for retry logic"""
-    
+
     def __init__(
         self,
         max_attempts: int = 3,
@@ -249,18 +249,18 @@ class RetryConfig:
 
 def with_retry(config: RetryConfig = RetryConfig()):
     """Decorator for adding retry logic to async functions"""
-    
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def wrapper(*args, **kwargs) -> T:
             last_exception = None
-            
+
             for attempt in range(config.max_attempts):
                 try:
                     return await func(*args, **kwargs)
                 except Exception as e:
                     last_exception = e
-                    
+
                     if attempt < config.max_attempts - 1:
                         delay = min(
                             config.initial_delay * (
@@ -268,21 +268,21 @@ def with_retry(config: RetryConfig = RetryConfig()):
                             ),
                             config.max_delay
                         )
-                        
+
                         logger.warning(
                             f"{func.__name__} failed (attempt {attempt + 1}/"
                             f"{config.max_attempts}): {e}. Retrying in {delay}s"
                         )
-                        
+
                         await asyncio.sleep(delay)
                     else:
                         logger.error(
                             f"{func.__name__} failed after "
                             f"{config.max_attempts} attempts: {e}"
                         )
-                        
+
             raise last_exception
-            
+
         return wrapper
     return decorator
 ```
@@ -323,15 +323,15 @@ class ClassInfo:
 
 class PythonParser:
     """Parser for Python source code using AST"""
-    
+
     def parse_file(self, file_path: Path) -> Dict[str, Any]:
         """Parse Python file and extract structure"""
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-                
+
             tree = ast.parse(content, filename=str(file_path))
-            
+
             return {
                 'functions': self._extract_functions(tree),
                 'classes': self._extract_classes(tree),
@@ -339,15 +339,15 @@ class PythonParser:
                 'globals': self._extract_globals(tree),
                 'complexity': self._calculate_complexity(tree)
             }
-            
+
         except Exception as e:
             logger.error(f"Error parsing {file_path}: {e}")
             raise
-            
+
     def _extract_functions(self, tree: ast.AST) -> List[FunctionInfo]:
         """Extract function definitions"""
         functions = []
-        
+
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
                 functions.append(FunctionInfo(
@@ -357,22 +357,22 @@ class PythonParser:
                     docstring=ast.get_docstring(node),
                     arguments=[arg.arg for arg in node.args.args],
                     decorators=[
-                        self._get_decorator_name(d) 
+                        self._get_decorator_name(d)
                         for d in node.decorator_list
                     ],
                     complexity=self._calculate_complexity(node)
                 ))
-                
+
         return functions
-        
+
     def _extract_classes(self, tree: ast.AST) -> List[ClassInfo]:
         """Extract class definitions"""
         classes = []
-        
+
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
                 methods = []
-                
+
                 for item in node.body:
                     if isinstance(item, ast.FunctionDef):
                         methods.append(FunctionInfo(
@@ -387,7 +387,7 @@ class PythonParser:
                             ],
                             complexity=self._calculate_complexity(item)
                         ))
-                        
+
                 classes.append(ClassInfo(
                     name=node.name,
                     start_line=node.lineno,
@@ -399,19 +399,19 @@ class PythonParser:
                         for base in node.bases
                     ]
                 ))
-                
+
         return classes
-        
+
     def _calculate_complexity(self, node: ast.AST) -> int:
         """Calculate cyclomatic complexity"""
         complexity = 1
-        
+
         for child in ast.walk(node):
             if isinstance(child, (ast.If, ast.While, ast.For)):
                 complexity += 1
             elif isinstance(child, ast.ExceptHandler):
                 complexity += 1
-                
+
         return complexity
 ```
 
@@ -428,42 +428,42 @@ logger = logging.getLogger(__name__)
 
 class TypeScriptParser:
     """Parser for TypeScript/JavaScript using tree-sitter"""
-    
+
     def __init__(self):
         # Initialize tree-sitter languages
         self.typescript_language = Language('build/languages.so', 'typescript')
         self.javascript_language = Language('build/languages.so', 'javascript')
-        
+
     def parse_file(self, file_path: Path) -> Dict[str, Any]:
         """Parse TypeScript/JavaScript file"""
         parser = Parser()
-        
+
         # Determine language
         if file_path.suffix in ['.ts', '.tsx']:
             parser.set_language(self.typescript_language)
         else:
             parser.set_language(self.javascript_language)
-            
+
         with open(file_path, 'rb') as f:
             content = f.read()
-            
+
         tree = parser.parse(content)
-        
+
         return {
             'functions': self._extract_functions(tree, content),
             'classes': self._extract_classes(tree, content),
             'imports': self._extract_imports(tree, content),
             'exports': self._extract_exports(tree, content)
         }
-        
+
     def _extract_functions(
-        self, 
-        tree: tree_sitter.Tree, 
+        self,
+        tree: tree_sitter.Tree,
         content: bytes
     ) -> List[Dict]:
         """Extract function declarations"""
         functions = []
-        
+
         # Query for function declarations
         query = self.typescript_language.query("""
             (function_declaration
@@ -471,15 +471,15 @@ class TypeScriptParser:
                 parameters: (formal_parameters) @params
                 body: (statement_block) @body
             ) @function
-            
+
             (arrow_function
                 parameters: (formal_parameters) @params
                 body: (_) @body
             ) @arrow
         """)
-        
+
         captures = query.captures(tree.root_node)
-        
+
         for capture in captures:
             node = capture[0]
             if capture[1] == 'function':
@@ -489,9 +489,9 @@ class TypeScriptParser:
                     'end_line': node.end_point[0] + 1,
                     'type': 'function'
                 })
-                
+
         return functions
-        
+
     def _get_node_text(self, node: tree_sitter.Node, content: bytes) -> str:
         """Extract text from a node"""
         if node:
@@ -522,7 +522,7 @@ class CodeChunk:
 
 class CodeChunker:
     """Intelligent code chunking based on AST"""
-    
+
     def __init__(
         self,
         max_chunk_size: int = 512,
@@ -533,7 +533,7 @@ class CodeChunker:
         self.overlap_size = overlap_size
         self.min_chunk_size = min_chunk_size
         self.encoder = tiktoken.get_encoding("cl100k_base")
-        
+
     def chunk_code(
         self,
         content: str,
@@ -543,17 +543,17 @@ class CodeChunker:
         """Create chunks from parsed code"""
         chunks = []
         lines = content.split('\n')
-        
+
         # Process functions
         for func in parse_result.get('functions', []):
             chunk = self._create_function_chunk(
-                lines, 
-                func, 
+                lines,
+                func,
                 file_path
             )
             if chunk:
                 chunks.append(chunk)
-                
+
         # Process classes
         for cls in parse_result.get('classes', []):
             chunk = self._create_class_chunk(
@@ -563,7 +563,7 @@ class CodeChunker:
             )
             if chunk:
                 chunks.append(chunk)
-                
+
         # Handle remaining code
         chunks.extend(
             self._create_module_chunks(
@@ -572,9 +572,9 @@ class CodeChunker:
                 file_path
             )
         )
-        
+
         return chunks
-        
+
     def _create_function_chunk(
         self,
         lines: List[str],
@@ -585,13 +585,13 @@ class CodeChunker:
         # Extract function lines
         start = func_info.start_line - 1
         end = func_info.end_line
-        
+
         function_lines = lines[start:end]
         content = '\n'.join(function_lines)
-        
+
         # Check token count
         tokens = self.encoder.encode(content)
-        
+
         if len(tokens) <= self.max_chunk_size:
             return CodeChunk(
                 content=content,
@@ -614,7 +614,7 @@ class CodeChunker:
                 func_info,
                 file_path
             )
-            
+
     def _split_large_function(
         self,
         lines: List[str],
@@ -625,10 +625,10 @@ class CodeChunker:
         chunks = []
         current_chunk = []
         current_tokens = 0
-        
+
         for i, line in enumerate(lines):
             line_tokens = len(self.encoder.encode(line))
-            
+
             if current_tokens + line_tokens > self.max_chunk_size:
                 # Create chunk
                 if current_chunk:
@@ -643,18 +643,18 @@ class CodeChunker:
                             'part': len(chunks) + 1
                         }
                     ))
-                    
+
                 # Add overlap
                 overlap_start = max(0, len(current_chunk) - self.overlap_size)
                 current_chunk = current_chunk[overlap_start:]
                 current_tokens = sum(
-                    len(self.encoder.encode(l)) 
+                    len(self.encoder.encode(l))
                     for l in current_chunk
                 )
-                
+
             current_chunk.append(line)
             current_tokens += line_tokens
-            
+
         # Final chunk
         if current_chunk:
             chunks.append(self._finalize_chunk(
@@ -668,7 +668,7 @@ class CodeChunker:
                     'part': len(chunks) + 1
                 }
             ))
-            
+
         return chunks
 ```
 
@@ -691,7 +691,7 @@ class DocChunk:
 
 class DocumentationChunker:
     """Chunker for markdown documentation"""
-    
+
     def __init__(
         self,
         max_chunk_size: int = 512,
@@ -700,7 +700,7 @@ class DocumentationChunker:
         self.max_chunk_size = max_chunk_size
         self.overlap_size = overlap_size
         self.encoder = tiktoken.get_encoding("cl100k_base")
-        
+
     def chunk_markdown(
         self,
         content: str,
@@ -708,14 +708,14 @@ class DocumentationChunker:
     ) -> List[DocChunk]:
         """Chunk markdown content"""
         chunks = []
-        
+
         # Parse markdown structure
         sections = self._parse_markdown_sections(content)
-        
+
         for section in sections:
             # Check if section fits in one chunk
             tokens = self.encoder.encode(section['content'])
-            
+
             if len(tokens) <= self.max_chunk_size:
                 chunks.append(DocChunk(
                     content=section['content'],
@@ -734,30 +734,30 @@ class DocumentationChunker:
                 chunks.extend(
                     self._split_large_section(section, file_path)
                 )
-                
+
         return chunks
-        
+
     def _parse_markdown_sections(
-        self, 
+        self,
         content: str
     ) -> List[Dict[str, Any]]:
         """Parse markdown into sections"""
         sections = []
-        
+
         # Regex patterns
         heading_pattern = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
         code_block_pattern = re.compile(r'```[\s\S]*?```', re.MULTILINE)
-        
+
         # Find all headings
         headings = list(heading_pattern.finditer(content))
-        
+
         # Process sections between headings
         for i, match in enumerate(headings):
             start = match.start()
             end = headings[i + 1].start() if i + 1 < len(headings) else len(content)
-            
+
             section_content = content[start:end].strip()
-            
+
             sections.append({
                 'content': section_content,
                 'start': start,
@@ -766,7 +766,7 @@ class DocumentationChunker:
                 'heading': match.group(2),
                 'level': len(match.group(1))
             })
-            
+
         return sections
 ```
 
@@ -789,7 +789,7 @@ logger = logging.getLogger(__name__)
 
 class OpenAIEmbedder:
     """Generate embeddings using OpenAI API"""
-    
+
     def __init__(
         self,
         api_key: str,
@@ -801,7 +801,7 @@ class OpenAIEmbedder:
         self.model = model
         self.batch_size = batch_size
         self.max_retries = max_retries
-        
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10)
@@ -812,32 +812,32 @@ class OpenAIEmbedder:
     ) -> List[List[float]]:
         """Generate embeddings for a list of texts"""
         all_embeddings = []
-        
+
         # Process in batches
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
-            
+
             try:
                 response = await self.client.embeddings.create(
                     model=self.model,
                     input=batch
                 )
-                
+
                 embeddings = [
-                    item.embedding 
+                    item.embedding
                     for item in response.data
                 ]
                 all_embeddings.extend(embeddings)
-                
+
                 # Rate limiting
                 await asyncio.sleep(0.1)
-                
+
             except Exception as e:
                 logger.error(f"Error generating embeddings: {e}")
                 raise
-                
+
         return all_embeddings
-        
+
     async def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for a single text"""
         embeddings = await self.generate_embeddings([text])
@@ -856,12 +856,12 @@ import numpy as np
 
 class EmbeddingCache:
     """Cache for embeddings to reduce API calls"""
-    
+
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
         self.prefix = "embedding:"
         self.ttl = 86400 * 7  # 7 days
-        
+
     def _get_cache_key(self, text: str, model: str) -> str:
         """Generate cache key for text"""
         content = f"{model}:{text}"
@@ -869,21 +869,21 @@ class EmbeddingCache:
             content.encode()
         ).hexdigest()
         return f"{self.prefix}{hash_digest}"
-        
+
     async def get(
-        self, 
-        text: str, 
+        self,
+        text: str,
         model: str
     ) -> Optional[List[float]]:
         """Get embedding from cache"""
         key = self._get_cache_key(text, model)
-        
+
         value = await self.redis.get(key)
         if value:
             return json.loads(value)
-            
+
         return None
-        
+
     async def set(
         self,
         text: str,
@@ -892,13 +892,13 @@ class EmbeddingCache:
     ) -> None:
         """Store embedding in cache"""
         key = self._get_cache_key(text, model)
-        
+
         await self.redis.setex(
             key,
             self.ttl,
             json.dumps(embedding)
         )
-        
+
     async def get_batch(
         self,
         texts: List[str],
@@ -909,16 +909,16 @@ class EmbeddingCache:
             self._get_cache_key(text, model)
             for text in texts
         ]
-        
+
         values = await self.redis.mget(keys)
-        
+
         result = {}
         for text, value in zip(texts, values):
             if value:
                 result[text] = json.loads(value)
             else:
                 result[text] = None
-                
+
         return result
 ```
 
@@ -935,7 +935,7 @@ from typing import Dict, Any
 
 class QdrantSchema:
     """Schema definitions for Qdrant collections"""
-    
+
     @staticmethod
     def get_code_collection_config() -> Dict[str, Any]:
         """Configuration for code collection"""
@@ -956,7 +956,7 @@ class QdrantSchema:
                 )
             )
         }
-        
+
     @staticmethod
     def get_payload_schema() -> Dict[str, Any]:
         """Schema for payload fields"""
@@ -988,7 +988,7 @@ logger = logging.getLogger(__name__)
 
 class VectorStore:
     """Async Qdrant vector store implementation"""
-    
+
     def __init__(
         self,
         url: str = "http://localhost:6333",
@@ -1000,27 +1000,27 @@ class VectorStore:
             api_key=api_key
         )
         self.collection_name = collection_name
-        
+
     async def initialize(self) -> None:
         """Initialize collection if not exists"""
         collections = await self.client.get_collections()
-        
+
         if self.collection_name not in [
             c.name for c in collections.collections
         ]:
             await self.create_collection()
-            
+
     async def create_collection(self) -> None:
         """Create collection with schema"""
         schema = QdrantSchema()
-        
+
         await self.client.create_collection(
             collection_name=self.collection_name,
             **schema.get_code_collection_config()
         )
-        
+
         logger.info(f"Created collection: {self.collection_name}")
-        
+
     async def upsert_chunks(
         self,
         chunks: List[CodeChunk],
@@ -1028,10 +1028,10 @@ class VectorStore:
     ) -> None:
         """Upsert chunks with embeddings"""
         points = []
-        
+
         for chunk, embedding in zip(chunks, embeddings):
             point_id = str(uuid.uuid4())
-            
+
             payload = {
                 "content": chunk.content,
                 "file_path": chunk.metadata.get("file", ""),
@@ -1044,22 +1044,22 @@ class VectorStore:
                 "token_count": chunk.token_count,
                 "timestamp": datetime.utcnow().isoformat()
             }
-            
+
             points.append(models.PointStruct(
                 id=point_id,
                 vector=embedding,
                 payload=payload
             ))
-            
+
         # Batch upsert
         await self.client.upsert(
             collection_name=self.collection_name,
             points=points,
             wait=True
         )
-        
+
         logger.info(f"Upserted {len(points)} chunks")
-        
+
     async def search(
         self,
         query_vector: List[float],
@@ -1073,7 +1073,7 @@ class VectorStore:
             limit=limit,
             query_filter=filters
         )
-        
+
         return results
 ```
 
@@ -1098,7 +1098,7 @@ class ProcessedQuery:
 
 class QueryProcessor:
     """Process and enhance search queries"""
-    
+
     def __init__(self):
         self.intent_patterns = {
             'code_search': [
@@ -1120,43 +1120,43 @@ class QueryProcessor:
                 r'issue'
             ]
         }
-        
+
     def process_query(self, query: str) -> ProcessedQuery:
         """Process raw query into structured format"""
         # Detect intent
         intent = self._detect_intent(query)
-        
+
         # Extract filters
         filters = self._extract_filters(query)
-        
+
         # Identify boost terms
         boost_terms = self._extract_boost_terms(query)
-        
+
         # Clean query
         cleaned_query = self._clean_query(query)
-        
+
         return ProcessedQuery(
             text=cleaned_query,
             intent=intent,
             filters=filters,
             boost_terms=boost_terms
         )
-        
+
     def _detect_intent(self, query: str) -> str:
         """Detect query intent"""
         query_lower = query.lower()
-        
+
         for intent, patterns in self.intent_patterns.items():
             for pattern in patterns:
                 if re.search(pattern, query_lower):
                     return intent
-                    
+
         return 'code_search'  # default
-        
+
     def _extract_filters(self, query: str) -> Dict[str, Any]:
         """Extract filter conditions from query"""
         filters = {}
-        
+
         # Language filter
         lang_match = re.search(
             r'lang:(\w+)|language:(\w+)',
@@ -1167,7 +1167,7 @@ class QueryProcessor:
             filters['language'] = (
                 lang_match.group(1) or lang_match.group(2)
             ).lower()
-            
+
         # File filter
         file_match = re.search(
             r'file:([^\s]+)',
@@ -1176,7 +1176,7 @@ class QueryProcessor:
         )
         if file_match:
             filters['file_path'] = file_match.group(1)
-            
+
         return filters
 ```
 
@@ -1192,7 +1192,7 @@ logger = logging.getLogger(__name__)
 
 class SemanticSearch:
     """Semantic search implementation"""
-    
+
     def __init__(
         self,
         vector_store: VectorStore,
@@ -1202,7 +1202,7 @@ class SemanticSearch:
         self.vector_store = vector_store
         self.embedder = embedder
         self.query_processor = query_processor
-        
+
     async def search(
         self,
         query: str,
@@ -1212,34 +1212,34 @@ class SemanticSearch:
         """Perform semantic search"""
         # Process query
         processed = self.query_processor.process_query(query)
-        
+
         # Generate query embedding
         query_embedding = await self.embedder.generate_embedding(
             processed.text
         )
-        
+
         # Build filters
         qdrant_filters = self._build_filters(
             processed.filters,
             filters
         )
-        
+
         # Search
         results = await self.vector_store.search(
             query_vector=query_embedding,
             limit=limit * 2,  # Get more for re-ranking
             filters=qdrant_filters
         )
-        
+
         # Re-rank results
         ranked_results = self._rerank_results(
             results,
             processed,
             limit
         )
-        
+
         return self._format_results(ranked_results)
-        
+
     def _build_filters(
         self,
         query_filters: Dict[str, Any],
@@ -1247,12 +1247,12 @@ class SemanticSearch:
     ) -> Optional[models.Filter]:
         """Build Qdrant filters"""
         conditions = []
-        
+
         # Merge filters
         all_filters = {**query_filters}
         if additional_filters:
             all_filters.update(additional_filters)
-            
+
         # Build conditions
         for key, value in all_filters.items():
             if key == 'language':
@@ -1269,12 +1269,12 @@ class SemanticSearch:
                         match=models.MatchText(text=value)
                     )
                 )
-                
+
         if conditions:
             return models.Filter(must=conditions)
-            
+
         return None
-        
+
     def _rerank_results(
         self,
         results: List[models.ScoredPoint],
@@ -1283,10 +1283,10 @@ class SemanticSearch:
     ) -> List[models.ScoredPoint]:
         """Re-rank results based on additional factors"""
         scored_results = []
-        
+
         for result in results:
             score = result.score
-            
+
             # Boost by intent match
             if query.intent == 'code_search':
                 if result.payload.get('chunk_type') == 'function':
@@ -1294,18 +1294,18 @@ class SemanticSearch:
             elif query.intent == 'documentation':
                 if result.payload.get('chunk_type') == 'heading':
                     score *= 1.1
-                    
+
             # Boost by term matches
             content = result.payload.get('content', '').lower()
             for term in query.boost_terms:
                 if term.lower() in content:
                     score *= 1.05
-                    
+
             scored_results.append((score, result))
-            
+
         # Sort by score
         scored_results.sort(key=lambda x: x[0], reverse=True)
-        
+
         return [r[1] for r in scored_results[:limit]]
 ```
 
@@ -1318,14 +1318,14 @@ from qdrant_client import models
 
 class ResultFormatter:
     """Format search results for API response"""
-    
+
     def format_results(
         self,
         results: List[models.ScoredPoint]
     ) -> List[Dict[str, Any]]:
         """Format search results"""
         formatted = []
-        
+
         for result in results:
             formatted.append({
                 'id': result.id,
@@ -1344,7 +1344,7 @@ class ResultFormatter:
                 },
                 'timestamp': result.payload.get('timestamp', '')
             })
-            
+
         return formatted
 ```
 
@@ -1365,7 +1365,7 @@ logger = logging.getLogger(__name__)
 
 class IngestionService:
     """Complete ingestion pipeline service"""
-    
+
     def __init__(
         self,
         parser_factory: ParserFactory,
@@ -1379,18 +1379,18 @@ class IngestionService:
         self.embedder = embedder
         self.vector_store = vector_store
         self.embedding_cache = embedding_cache
-        
+
     async def ingest_file(self, file_path: Path) -> Dict[str, Any]:
         """Ingest a single file"""
         try:
             # Parse file
             parser = self.parser_factory.get_parser(file_path)
             parse_result = await parser.parse_file(file_path)
-            
+
             # Read content
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-                
+
             # Create chunks
             chunker = self.chunker_factory.get_chunker(file_path)
             chunks = chunker.chunk_content(
@@ -1398,24 +1398,24 @@ class IngestionService:
                 parse_result,
                 file_path
             )
-            
+
             # Generate embeddings
             embeddings = await self._generate_embeddings_with_cache(
                 chunks
             )
-            
+
             # Store in vector database
             await self.vector_store.upsert_chunks(
                 chunks,
                 embeddings
             )
-            
+
             return {
                 'status': 'success',
                 'file': str(file_path),
                 'chunks_created': len(chunks)
             }
-            
+
         except Exception as e:
             logger.error(f"Error ingesting {file_path}: {e}")
             return {
@@ -1423,7 +1423,7 @@ class IngestionService:
                 'file': str(file_path),
                 'error': str(e)
             }
-            
+
     async def _generate_embeddings_with_cache(
         self,
         chunks: List[CodeChunk]
@@ -1432,38 +1432,38 @@ class IngestionService:
         embeddings = []
         uncached_chunks = []
         uncached_indices = []
-        
+
         # Check cache
         for i, chunk in enumerate(chunks):
             cached = await self.embedding_cache.get(
                 chunk.content,
                 self.embedder.model
             )
-            
+
             if cached:
                 embeddings.append(cached)
             else:
                 embeddings.append(None)
                 uncached_chunks.append(chunk.content)
                 uncached_indices.append(i)
-                
+
         # Generate missing embeddings
         if uncached_chunks:
             new_embeddings = await self.embedder.generate_embeddings(
                 uncached_chunks
             )
-            
+
             # Update results and cache
             for idx, embedding in zip(uncached_indices, new_embeddings):
                 embeddings[idx] = embedding
-                
+
                 # Cache embedding
                 await self.embedding_cache.set(
                     chunks[idx].content,
                     self.embedder.model,
                     embedding
                 )
-                
+
         return embeddings
 ```
 
@@ -1473,7 +1473,7 @@ class IngestionService:
 # services/retrieval_service.py
 class RetrievalService:
     """Complete retrieval pipeline service"""
-    
+
     def __init__(
         self,
         semantic_search: SemanticSearch,
@@ -1481,7 +1481,7 @@ class RetrievalService:
     ):
         self.semantic_search = semantic_search
         self.result_formatter = result_formatter
-        
+
     async def retrieve_context(
         self,
         query: str,
@@ -1496,17 +1496,17 @@ class RetrievalService:
                 limit,
                 filters
             )
-            
+
             # Format results
             formatted = self.result_formatter.format_results(results)
-            
+
             return {
                 'status': 'success',
                 'query': query,
                 'results': formatted,
                 'total': len(formatted)
             }
-            
+
         except Exception as e:
             logger.error(f"Error retrieving context: {e}")
             return {
@@ -1529,14 +1529,14 @@ import hashlib
 
 class CacheStrategy:
     """Multi-level caching strategy"""
-    
+
     def __init__(self):
         self.memory_cache = {}
         self.cache_stats = {
             'hits': 0,
             'misses': 0
         }
-        
+
     @lru_cache(maxsize=1000)
     def get_cached_embedding(
         self,
@@ -1552,10 +1552,10 @@ class CacheStrategy:
 # optimization/batch_optimizer.py
 class BatchOptimizer:
     """Optimize batch processing"""
-    
+
     def __init__(self):
         self.optimal_batch_size = 50
-        
+
     async def optimize_batch_size(
         self,
         total_items: int,
@@ -1572,7 +1572,7 @@ class BatchOptimizer:
                 100,
                 self.optimal_batch_size + 10
             )
-            
+
         return self.optimal_batch_size
 ```
 
@@ -1591,10 +1591,10 @@ from pathlib import Path
 async def test_python_parsing():
     """Test Python file parsing"""
     parser = PythonParser()
-    
+
     test_file = Path("test_data/sample.py")
     result = await parser.parse_file(test_file)
-    
+
     assert 'functions' in result
     assert 'classes' in result
     assert len(result['functions']) > 0
@@ -1603,13 +1603,13 @@ async def test_python_parsing():
 async def test_embedding_generation():
     """Test embedding generation"""
     embedder = OpenAIEmbedder(api_key="test")
-    
+
     # Mock API call
     with mock.patch('openai.AsyncOpenAI.embeddings.create'):
         embeddings = await embedder.generate_embeddings(
             ["test text"]
         )
-        
+
     assert len(embeddings) == 1
     assert len(embeddings[0]) == 1536
 ```
@@ -1628,11 +1628,11 @@ async def test_full_ingestion_pipeline():
         vector_store,
         cache
     )
-    
+
     result = await service.ingest_file(
         Path("test_data/sample.py")
     )
-    
+
     assert result['status'] == 'success'
     assert result['chunks_created'] > 0
 ```

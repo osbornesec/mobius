@@ -99,7 +99,7 @@ from langgraph.prebuilt import create_react_agent
    @classmethod
    def validate_field(cls, v):
        return v
-   
+
    # AFTER
    @field_validator('field_name')
    @classmethod
@@ -219,7 +219,7 @@ Getting started with the Mobius platform is straightforward:
    ```bash
    # Ensure Python 3.11+ is installed
    python --version  # Should be 3.11 or higher
-   
+
    # Install updated dependencies
    pip install -r requirements.txt
    pip install -r requirements-dev.txt
@@ -229,7 +229,7 @@ Getting started with the Mobius platform is straightforward:
    ```bash
    # Ensure Node.js 20+ is installed
    node --version  # Should be 20.0.0 or higher
-   
+
    # Install frontend dependencies
    cd frontend
    npm install
@@ -262,7 +262,7 @@ Getting started with the Mobius platform is straightforward:
 
 **Problem**: `ImportError: cannot import name 'BaseModel' from 'langchain_core.pydantic_v1'`
 
-**Solution**: 
+**Solution**:
 ```python
 # Replace this
 from langchain_core.pydantic_v1 import BaseModel

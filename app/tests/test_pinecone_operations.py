@@ -321,7 +321,7 @@ class TestPineconeWithoutAPIKey:
 
             # Should raise exception when initializing without API key
             with pytest.raises(Exception):
-                pc = Pinecone()
+                Pinecone()
 
     def test_invalid_api_key(self):
         """Test behavior with invalid API key."""

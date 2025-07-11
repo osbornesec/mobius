@@ -8,7 +8,7 @@ exclude: |
   )$
 fail_fast: true
 default_language_version:
-  python: python3.11
+  python: python3.13
 default_install_hook_types:
   - pre-commit
   - commit-msg
@@ -77,12 +77,6 @@ repos:
           - mdformat-gfm
           - mdformat-ruff
           - mdformat-frontmatter
-
-  - repo: https://github.com/markdownlint/markdownlint
-    rev: v0.13.0
-    hooks:
-      - id: markdownlint
-        name: 'markdown: Lint markdown files'
 
   - repo: https://github.com/sqlfluff/sqlfluff
     rev: 3.0.7

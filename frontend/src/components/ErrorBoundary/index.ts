@@ -1,6 +1,6 @@
 /**
  * Error Boundary module exports
- * 
+ *
  * @module ErrorBoundary
  */
 
@@ -15,10 +15,10 @@ export { default as ErrorFallback } from './ErrorFallback';
 export { useErrorReset, useManualErrorReset } from './useErrorReset';
 
 // Error logger utilities
-export { 
-  logError, 
-  getStoredErrors, 
-  clearStoredErrors 
+export {
+  logError,
+  getStoredErrors,
+  clearStoredErrors
 } from './errorLogger';
 
 // Types

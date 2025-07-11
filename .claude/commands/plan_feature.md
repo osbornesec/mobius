@@ -163,7 +163,7 @@ Based on task analysis AND clarification responses:
    - Include comprehensive description following the template
    - Assign to appropriate phase (usually current active phase)
    - Use feature name without FEATURE_ prefix
-   
+
 2. **Fill Out Planning Template**
    Guide through each section:
    - Problem Statement: Clear definition of what we're solving
@@ -216,7 +216,7 @@ mcp__scopecraft-cmd__task_create
 
 # Returns: TASK-001
 
-mcp__scopecraft-cmd__task_create  
+mcp__scopecraft-cmd__task_create
 - title: "Design authentication flow"
 - type: "design"
 - phase: "backlog"
@@ -236,7 +236,7 @@ mcp__scopecraft-cmd__task_create
 mcp__scopecraft-cmd__task_create
 - title: "Implement authentication UI"
 - type: "implementation"
-- phase: "backlog"  
+- phase: "backlog"
 - parent: "user-authentication"
 - depends: ["TASK-002"]  # Also needs design
 
@@ -298,7 +298,7 @@ Use for unknowns and investigation:
 - Common pitfalls and solutions
 - Performance considerations and optimizations
 
-### 2. Design/UX Tasks  
+### 2. Design/UX Tasks
 Use before implementation for user-facing features:
 - Create user flow diagrams
 - Design UI mockups or wireframes
@@ -375,7 +375,7 @@ Task 3: Create UI Login Components
 **Bad - Too Granular:**
 ```
 Task 1: Research OAuth2 patterns
-Task 2: Research JWT patterns  
+Task 2: Research JWT patterns
 Task 3: Design auth schema
 Task 4: Write design docs
 ```
@@ -435,7 +435,7 @@ Task1_ID = mcp__scopecraft-cmd__task_create(
 
 # Create design task with previous link
 Task2_ID = mcp__scopecraft-cmd__task_create(
-  title: "Design collaboration architecture", 
+  title: "Design collaboration architecture",
   type: "design",
   phase: "backlog",
   previous: Task1_ID  # Links to research task
@@ -444,7 +444,7 @@ Task2_ID = mcp__scopecraft-cmd__task_create(
 # Create implementation with previous link
 Task3_ID = mcp__scopecraft-cmd__task_create(
   title: "Implement core collaboration engine",
-  type: "implementation", 
+  type: "implementation",
   phase: "backlog",
   previous: Task2_ID  # Links to design task
 )
@@ -472,7 +472,7 @@ Research Phase:
 
 Design Phase:
 3. Task: Design collaboration architecture (TASK-003)
-   - previous: TASK-001 
+   - previous: TASK-001
    - depends: [TASK-001, TASK-002]  # Needs both research tasks
 
 Implementation Phase:
@@ -555,11 +555,11 @@ High-level approach to solving the problem
 
 ### Area: UI
 - [ ] Design: Create user flow for {feature}
-- [ ] Design: Design component layouts and states  
+- [ ] Design: Design component layouts and states
 - [ ] Implementation: Build {component name} component
 - [ ] Test: Write UI tests for user interactions
-  
-### Area: Core  
+
+### Area: Core
 - [ ] Architecture: Design data model for {feature}
 - [ ] Implementation: Implement {feature} business logic
 - [ ] Test: Unit test core functionality
@@ -659,7 +659,7 @@ Usage examples:
    - Todo: Add state synchronization
    - Todo: Write unit tests
    - Previous: TASK-002
-   
+
 4. Task: Add CLI Collaboration Commands (TASK-004)
    - Todo: Implement `collab start`
    - Todo: Implement `collab join`

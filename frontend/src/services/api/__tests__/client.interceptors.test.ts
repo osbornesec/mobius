@@ -44,7 +44,7 @@ describe('API Client Interceptors', () => {
     // Reset mocks
     vi.clearAllMocks();
     mockLocation.href = '';
-    
+
     // Reset localStorage mock
     localStorageMock.getItem.mockReset();
     localStorageMock.setItem.mockReset();
@@ -53,13 +53,13 @@ describe('API Client Interceptors', () => {
     // Create mock axios instance
     const { mockInstance, getInterceptors } = createMockAxiosInstance();
     mockAxiosInstance = mockInstance;
-    
+
     // Mock axios.create to return our mock instance
     (axios.create as MockedFunction<typeof axios.create>).mockReturnValue(mockAxiosInstance as any);
 
     // Re-import to get fresh instance with mocks
     vi.resetModules();
-    
+
     // Extract interceptors after import
     const setupInterceptors = async () => {
       await import('../config');
@@ -67,7 +67,7 @@ describe('API Client Interceptors', () => {
       requestInterceptor = interceptors.requestInterceptor;
       responseInterceptor = interceptors.responseInterceptor;
     };
-    
+
     return setupInterceptors();
   });
 
@@ -124,7 +124,7 @@ describe('API Client Interceptors', () => {
           refreshToken: vi.fn().mockResolvedValue(undefined),
           logout: vi.fn(),
         };
-        
+
         (useAuthStore.getState as MockedFunction<typeof useAuthStore.getState>).mockReturnValue(mockAuthStore as any);
         localStorageMock.getItem.mockReturnValue(mockNewAuthToken);
 
@@ -160,7 +160,7 @@ describe('API Client Interceptors', () => {
           refreshToken: vi.fn().mockRejectedValue(new Error('Refresh failed')),
           logout: vi.fn(),
         };
-        
+
         (useAuthStore.getState as MockedFunction<typeof useAuthStore.getState>).mockReturnValue(mockAuthStore as any);
 
         const unauthorizedError = new Error('Unauthorized') as AxiosError;

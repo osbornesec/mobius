@@ -13,7 +13,7 @@ check_variable() {
     local var_name=$1
     local var_value=$2
     local is_critical=${3:-true}
-    
+
     if [ -z "$var_value" ]; then
         echo "ERROR: $var_name is not set"
         if [ "$is_critical" = true ]; then

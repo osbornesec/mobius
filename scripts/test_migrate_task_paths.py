@@ -143,7 +143,7 @@ class TestTaskMigrator(unittest.TestCase):
         self.create_test_file(
             "task001.md",
             """# Task 001
-        
+
 Files to create:
 - `backend/app/main.py`
 - `backend/tests/test_main.py`
@@ -154,7 +154,7 @@ Files to create:
         self.create_test_file(
             "task002.md",
             """# Task 002
-        
+
 No paths to migrate here.
 Just some regular content.
 """,

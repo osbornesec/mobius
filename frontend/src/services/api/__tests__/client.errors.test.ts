@@ -25,13 +25,13 @@ describe('API Client Error Handling', () => {
 
     // Create mock axios instance
     const { mockInstance, getInterceptors } = createMockAxiosInstance();
-    
+
     // Mock axios.create to return our mock instance
     (axios.create as MockedFunction<typeof axios.create>).mockReturnValue(mockInstance as any);
 
     // Re-import to get fresh instance with mocks
     vi.resetModules();
-    
+
     // Import and get interceptors
     await import('../config');
     const interceptors = getInterceptors();

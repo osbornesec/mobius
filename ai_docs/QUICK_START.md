@@ -209,7 +209,7 @@ Once you have the basic setup running, proceed with these development tasks:
    ```bash
    # Check if PostgreSQL is running
    docker-compose logs postgres
-   
+
    # Restart if needed
    docker-compose restart postgres
    ```

@@ -143,49 +143,49 @@ security_audit --fail-on critical
   - Authorization bypass checks
   - Path traversal prevention
   - CORS misconfiguration
-  
+
 - **A02:2021 – Cryptographic Failures**
   - Weak encryption algorithms
   - Insecure key storage
   - Missing encryption at rest
-  
+
 - **A03:2021 – Injection**
   - SQL injection prevention
   - NoSQL injection checks
   - Command injection protection
   - LDAP injection prevention
-  
+
 - **A04:2021 – Insecure Design**
   - Threat modeling coverage
   - Security requirements validation
   - Secure design patterns
-  
+
 - **A05:2021 – Security Misconfiguration**
   - Default credentials
   - Unnecessary features enabled
   - Error handling disclosure
   - Security headers
-  
+
 - **A06:2021 – Vulnerable Components**
   - Dependency vulnerabilities
   - Outdated libraries
   - Unmaintained packages
-  
+
 - **A07:2021 – Authentication Failures**
   - Weak password policies
   - Session management
   - Multi-factor authentication
-  
+
 - **A08:2021 – Software and Data Integrity**
   - CI/CD security
   - Code signing
   - Dependency integrity
-  
+
 - **A09:2021 – Security Logging**
   - Audit logging coverage
   - Log injection prevention
   - Sensitive data in logs
-  
+
 - **A10:2021 – SSRF**
   - URL validation
   - Request filtering
@@ -366,16 +366,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Run Security Audit
         run: |
           # Install tools
           pip install bandit safety gitleaks
           npm install -g eslint-plugin-security
-          
+
           # Run audit
           ./security_audit.sh --fail-on high
-          
+
       - name: Upload Results
         uses: github/codeql-action/upload-sarif@v2
         with:
@@ -390,7 +390,7 @@ repos:
     hooks:
       - id: bandit
         args: ["-r", "src/"]
-        
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.0
     hooks:

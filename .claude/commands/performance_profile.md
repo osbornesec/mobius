@@ -146,13 +146,13 @@ node scripts/resource_timing.js --url http://localhost:3000
 ALTER DATABASE mobius SET log_min_duration_statement = 100;
 
 -- Query performance analysis
-EXPLAIN (ANALYZE, BUFFERS) 
-SELECT * FROM contexts 
-WHERE workspace_id = '123' 
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM contexts
+WHERE workspace_id = '123'
 AND created_at > NOW() - INTERVAL '7 days';
 
 -- Index usage statistics
-SELECT 
+SELECT
     schemaname,
     tablename,
     indexname,
@@ -282,15 +282,15 @@ async def load_test_endpoint(session, url, payload):
 async def run_load_test(endpoint, concurrent_users, requests_per_user):
     url = f"http://localhost:8000{endpoint}"
     payload = {"workspace_id": "test", "content": "test content"}
-    
+
     async with aiohttp.ClientSession() as session:
         tasks = []
         for _ in range(concurrent_users):
             for _ in range(requests_per_user):
                 tasks.append(load_test_endpoint(session, url, payload))
-        
+
         results = await asyncio.gather(*tasks)
-        
+
     return {
         "endpoint": endpoint,
         "total_requests": len(results),
@@ -316,13 +316,13 @@ class MemoryProfiler:
         self.threshold_mb = threshold_mb
         self.baseline = None
         tracemalloc.start()
-        
+
     def take_snapshot(self):
         snapshot = tracemalloc.take_snapshot()
         top_stats = snapshot.statistics('lineno')
-        
+
         total_mb = sum(stat.size for stat in top_stats) / 1024 / 1024
-        
+
         return {
             "timestamp": time.time(),
             "total_mb": total_mb,
@@ -340,15 +340,15 @@ class MemoryProfiler:
                 "percent": psutil.Process().memory_percent()
             }
         }
-    
+
     def detect_leak(self, duration_seconds=3600, interval_seconds=60):
         snapshots = []
         start_time = time.time()
-        
+
         while time.time() - start_time < duration_seconds:
             snapshot = self.take_snapshot()
             snapshots.append(snapshot)
-            
+
             if len(snapshots) > 1:
                 growth = snapshot["total_mb"] - snapshots[0]["total_mb"]
                 if growth > self.threshold_mb:
@@ -358,10 +358,10 @@ class MemoryProfiler:
                         "duration_seconds": time.time() - start_time,
                         "snapshots": snapshots
                     }
-            
+
             gc.collect()
             time.sleep(interval_seconds)
-        
+
         return {
             "leak_detected": False,
             "snapshots": snapshots
@@ -380,18 +380,18 @@ class AsyncPerformanceMonitor:
     def __init__(self):
         self.task_times = defaultdict(list)
         self.active_tasks = {}
-        
+
     def monitor_task(self, coro, name=None):
         async def wrapped():
             task_id = id(asyncio.current_task())
             name_key = name or coro.__name__
-            
+
             start_time = time.time()
             self.active_tasks[task_id] = {
                 "name": name_key,
                 "start": start_time
             }
-            
+
             try:
                 result = await coro
                 duration = time.time() - start_time
@@ -400,9 +400,9 @@ class AsyncPerformanceMonitor:
             finally:
                 if task_id in self.active_tasks:
                     del self.active_tasks[task_id]
-        
+
         return wrapped()
-    
+
     def get_stats(self):
         stats = {}
         for task_name, times in self.task_times.items():
@@ -415,7 +415,7 @@ class AsyncPerformanceMonitor:
                     "max_time": max(times)
                 }
         return stats
-    
+
     def get_active_tasks(self):
         current_time = time.time()
         return [
@@ -439,7 +439,7 @@ api_endpoints:
     p95_latency: 200ms
     p99_latency: 500ms
     throughput: 1000 req/s
-  
+
   context_search:
     p50_latency: 50ms
     p95_latency: 150ms
@@ -451,12 +451,12 @@ frontend:
   time_to_interactive: 3.5s
   cumulative_layout_shift: 0.1
   bundle_size: 500KB
-  
+
 database:
   query_response_time: 10ms
   connection_pool_size: 100
   cache_hit_rate: 90%
-  
+
 system:
   cpu_usage: <70%
   memory_usage: <80%
@@ -520,27 +520,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Environment
         run: |
           docker-compose up -d
           pip install -r requirements-dev.txt
           npm ci
-      
+
       - name: Run Performance Tests
         run: |
           python scripts/performance_profile.py \
             --mode full \
             --output performance_report.json \
             --baseline baseline_performance.json
-      
+
       - name: Check Performance Regression
         run: |
           python scripts/check_performance_regression.py \
             --current performance_report.json \
             --baseline baseline_performance.json \
             --threshold 10
-      
+
       - name: Upload Performance Report
         uses: actions/upload-artifact@v3
         with:

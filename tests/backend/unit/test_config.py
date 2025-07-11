@@ -9,7 +9,7 @@ and sensitive data handling.
 import os
 
 import pytest
-from pydantic import ValidationError
+from pydantic import ValidationError, SecretStr
 
 # Import the actual implementation
 from app.core.config import Settings

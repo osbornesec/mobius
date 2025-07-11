@@ -37,7 +37,7 @@ jobs:
             echo "Required secrets: PROD_POSTGRES_USER, PROD_POSTGRES_PASSWORD, PROD_REDIS_PASSWORD, PROD_QDRANT_API_KEY"
             exit 1
           fi
-          
+
           # Validate the production compose file
           docker compose -f docker-compose.prod.yml config > /dev/null
           echo "✓ Production configuration validated"
@@ -98,24 +98,24 @@ jobs:
           POSTGRES_USER: ${{ secrets.PROD_POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ secrets.PROD_POSTGRES_DB }}
-          
+
           # Redis configuration
           REDIS_PASSWORD: ${{ secrets.PROD_REDIS_PASSWORD }}
-          
+
           # Qdrant configuration
           QDRANT_API_KEY: ${{ secrets.PROD_QDRANT_API_KEY }}
-          
+
           # Application secrets
           JWT_SECRET_KEY: ${{ secrets.PROD_JWT_SECRET_KEY }}
           SESSION_SECRET_KEY: ${{ secrets.PROD_SESSION_SECRET_KEY }}
           INTERNAL_API_KEY: ${{ secrets.PROD_INTERNAL_API_KEY }}
-          
+
           # External service keys
           OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.PROD_ANTHROPIC_API_KEY }}
           GITHUB_APP_ID: ${{ secrets.PROD_GITHUB_APP_ID }}
           GITHUB_PRIVATE_KEY: ${{ secrets.PROD_GITHUB_PRIVATE_KEY }}
-          
+
           # Monitoring
           SENTRY_DSN: ${{ secrets.PROD_SENTRY_DSN }}
         run: |

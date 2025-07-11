@@ -172,7 +172,7 @@ class ItemCreate(ItemBase):
 class ItemRead(ItemBase):
     id: int
     owner_id: int
-    
+
     model_config = ConfigDict(from_attributes=True)
 ```
 
@@ -712,10 +712,10 @@ CREATE TABLE core.projects (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ,
-    
-    CONSTRAINT fk_projects_users 
-        FOREIGN KEY (user_id) 
-        REFERENCES auth.users(id) 
+
+    CONSTRAINT fk_projects_users
+        FOREIGN KEY (user_id)
+        REFERENCES auth.users(id)
         ON DELETE CASCADE
 );
 
@@ -725,9 +725,9 @@ CREATE INDEX idx_projects_created_at ON core.projects(created_at DESC);
 CREATE INDEX idx_projects_deleted_at ON core.projects(deleted_at) WHERE deleted_at IS NULL;
 
 -- Triggers
-CREATE TRIGGER update_projects_updated_at 
-    BEFORE UPDATE ON core.projects 
-    FOR EACH ROW 
+CREATE TRIGGER update_projects_updated_at
+    BEFORE UPDATE ON core.projects
+    FOR EACH ROW
     EXECUTE FUNCTION core.update_updated_at_column();
 ```
 
@@ -748,14 +748,14 @@ CREATE TABLE core.documents (
     tenant_id UUID NOT NULL,           -- For multi-tenancy
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    
+
     -- Structured columns for frequent filters
     is_active BOOLEAN DEFAULT true,
     document_type VARCHAR(50),
-    
-    CONSTRAINT fk_documents_projects 
-        FOREIGN KEY (project_id) 
-        REFERENCES core.projects(id) 
+
+    CONSTRAINT fk_documents_projects
+        FOREIGN KEY (project_id)
+        REFERENCES core.projects(id)
         ON DELETE CASCADE
 );
 ```
@@ -764,21 +764,21 @@ CREATE TABLE core.documents (
 ```sql
 -- HNSW index for vector similarity (recommended for pgvector 0.6.0+)
 -- Better performance than IVFFlat for most use cases
-CREATE INDEX idx_documents_embedding_hnsw 
-ON core.documents 
+CREATE INDEX idx_documents_embedding_hnsw
+ON core.documents
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
 -- Alternative: IVFFlat index (for faster build times)
 -- Lists should be ~sqrt(n) for up to 1M rows
 -- CREATE INDEX idx_documents_embedding_ivfflat
--- ON core.documents 
+-- ON core.documents
 -- USING ivfflat (embedding vector_cosine_ops)
 -- WITH (lists = 100);
 
 -- GIN index for JSONB metadata queries
-CREATE INDEX idx_documents_metadata 
-ON core.documents 
+CREATE INDEX idx_documents_metadata
+ON core.documents
 USING gin (metadata);
 
 -- B-tree indexes for structured filters
@@ -820,7 +820,7 @@ CREATE TABLE core.documents_partitioned (
 ) PARTITION BY LIST (tenant_id);
 
 -- Create partitions per tenant
-CREATE TABLE core.documents_tenant_a 
+CREATE TABLE core.documents_tenant_a
 PARTITION OF core.documents_partitioned
 FOR VALUES IN ('11111111-1111-1111-1111-111111111111');
 
@@ -902,7 +902,7 @@ from typing import List, Dict, Any
 import uuid
 
 def create_point_batch(
-    documents: List[Dict[str, Any]], 
+    documents: List[Dict[str, Any]],
     embeddings: List[List[float]]
 ) -> List[models.PointStruct]:
     """Create batch of points for efficient upsert"""
@@ -954,7 +954,7 @@ async def hybrid_search(
     score_threshold: float = 0.7
 ) -> List[models.ScoredPoint]:
     """Perform hybrid vector + metadata search"""
-    
+
     # Build filter conditions
     must_conditions = [
         FieldCondition(
@@ -962,7 +962,7 @@ async def hybrid_search(
             match=MatchValue(value=tenant_id)
         )
     ]
-    
+
     # Add dynamic filters
     if "language" in filters:
         must_conditions.append(
@@ -971,7 +971,7 @@ async def hybrid_search(
                 match=MatchValue(value=filters["language"])
             )
         )
-    
+
     if "min_tokens" in filters:
         must_conditions.append(
             FieldCondition(
@@ -979,7 +979,7 @@ async def hybrid_search(
                 range=Range(gte=filters["min_tokens"])
             )
         )
-    
+
     # Execute search
     results = await client.search(
         collection_name="production_contexts",
@@ -989,7 +989,7 @@ async def hybrid_search(
         score_threshold=score_threshold,
         with_payload=True
     )
-    
+
     return results
 ```
 
@@ -1041,15 +1041,15 @@ logger = get_logger()
 
 class EmbeddingQueue:
     """Queue for async embedding tasks"""
-    
+
     def __init__(self, redis_url: str):
         self.redis_url = redis_url
         self.queue_name = "mobius:embedding:queue"
         self.processing_queue = "mobius:embedding:processing"
-        
+
     async def connect(self):
         self.redis = await aioredis.from_url(self.redis_url)
-    
+
     async def enqueue_document(self, document_id: str, priority: int = 0):
         """Add document to embedding queue"""
         task = {
@@ -1057,15 +1057,15 @@ class EmbeddingQueue:
             "timestamp": datetime.utcnow().isoformat(),
             "attempts": 0
         }
-        
+
         # Use sorted set for priority queue
         await self.redis.zadd(
             self.queue_name,
             {json.dumps(task): priority}
         )
-        
+
         logger.info("document_queued", document_id=document_id)
-    
+
     async def dequeue_batch(self, batch_size: int = 10) -> List[Dict[str, Any]]:
         """Get batch of documents to process"""
         # Move items to processing queue atomically
@@ -1074,7 +1074,7 @@ class EmbeddingQueue:
             items = await self.redis.zrange(
                 self.queue_name, 0, batch_size - 1
             )
-            
+
             if items:
                 # Move to processing queue
                 pipe.multi()
@@ -1082,7 +1082,7 @@ class EmbeddingQueue:
                     pipe.zrem(self.queue_name, item)
                     pipe.sadd(self.processing_queue, item)
                 await pipe.execute()
-                
+
         return [json.loads(item) for item in items]
 ```
 
@@ -1097,7 +1097,7 @@ import asyncio
 
 class EmbeddingWorker:
     """Worker for processing embedding queue"""
-    
+
     def __init__(
         self,
         queue: EmbeddingQueue,
@@ -1108,26 +1108,26 @@ class EmbeddingWorker:
         self.embedding_service = embedding_service
         self.qdrant = qdrant_client
         self.running = False
-    
+
     async def process_document(self, document_id: str):
         """Process single document"""
         async with get_async_session() as db:
             # 1. Fetch document from PostgreSQL
             doc_service = DocumentService(db)
             document = await doc_service.get_by_id(document_id)
-            
+
             if not document:
                 logger.warning("document_not_found", document_id=document_id)
                 return
-            
+
             # 2. Generate embedding
             embedding = await self.embedding_service.generate_embedding(
                 document.content
             )
-            
+
             # 3. Update PostgreSQL with embedding
             await doc_service.update_embedding(document_id, embedding)
-            
+
             # 4. Upsert to Qdrant
             await self.qdrant.upsert(
                 collection_name="production_contexts",
@@ -1144,31 +1144,31 @@ class EmbeddingWorker:
                     )
                 ]
             )
-            
+
             logger.info("document_embedded", document_id=document_id)
-    
+
     async def run(self):
         """Main worker loop"""
         self.running = True
-        
+
         while self.running:
             try:
                 # Get batch of documents
                 batch = await self.queue.dequeue_batch(batch_size=10)
-                
+
                 if not batch:
                     # No work, sleep briefly
                     await asyncio.sleep(1)
                     continue
-                
+
                 # Process batch concurrently
                 tasks = [
                     self.process_document(task["document_id"])
                     for task in batch
                 ]
-                
+
                 await asyncio.gather(*tasks, return_exceptions=True)
-                
+
             except Exception as e:
                 logger.error("worker_error", error=str(e))
                 await asyncio.sleep(5)  # Back off on error
@@ -1182,36 +1182,36 @@ from typing import Set
 
 class ReconciliationService:
     """Ensure PostgreSQL and Qdrant stay in sync"""
-    
+
     def __init__(self, db_session, qdrant_client, queue):
         self.db = db_session
         self.qdrant = qdrant_client
         self.queue = queue
-    
+
     async def find_missing_embeddings(
-        self, 
+        self,
         lookback_hours: int = 24
     ) -> Set[str]:
         """Find documents without embeddings"""
         cutoff = datetime.utcnow() - timedelta(hours=lookback_hours)
-        
+
         # Get document IDs from PostgreSQL
         postgres_query = """
             SELECT id FROM core.documents
             WHERE created_at > :cutoff
             AND embedding IS NULL
         """
-        
+
         result = await self.db.execute(
             postgres_query,
             {"cutoff": cutoff}
         )
         postgres_ids = {str(row.id) for row in result}
-        
+
         # Get IDs from Qdrant
         qdrant_ids = set()
         offset = None
-        
+
         while True:
             result = await self.qdrant.scroll(
                 collection_name="production_contexts",
@@ -1228,29 +1228,29 @@ class ReconciliationService:
                 offset=offset,
                 limit=1000
             )
-            
+
             qdrant_ids.update(point.id for point in result.points)
-            
+
             if not result.next_page_offset:
                 break
             offset = result.next_page_offset
-        
+
         # Find missing
         missing = postgres_ids - qdrant_ids
-        
+
         logger.info(
             "reconciliation_complete",
             postgres_count=len(postgres_ids),
             qdrant_count=len(qdrant_ids),
             missing_count=len(missing)
         )
-        
+
         return missing
-    
+
     async def sync_missing(self):
         """Queue missing documents for embedding"""
         missing = await self.find_missing_embeddings()
-        
+
         for doc_id in missing:
             await self.queue.enqueue_document(
                 doc_id,
@@ -1274,18 +1274,18 @@ async def create_document(
     queue: EmbeddingQueue = Depends(get_queue)
 ):
     """Create document with async embedding"""
-    
+
     # 1. Create in PostgreSQL (transactional)
     async with db.begin():  # Auto commit/rollback
         doc_service = DocumentService(db)
         document = await doc_service.create(request)
-    
+
     # 2. Queue for embedding (after commit)
     background_tasks.add_task(
         queue.enqueue_document,
         str(document.id)
     )
-    
+
     return DocumentResponse.from_orm(document)
 ```
 
@@ -1299,26 +1299,26 @@ from typing import Optional, List
 
 class EmbeddingCache:
     """Cache for expensive embedding operations"""
-    
+
     def __init__(self, redis_client):
         self.redis = redis_client
         self.ttl = 86400  # 24 hours
         self.prefix = "mobius:embedding:cache"
-    
+
     def _get_key(self, text: str) -> str:
         """Generate cache key from text"""
         text_hash = hashlib.sha256(text.encode()).hexdigest()
         return f"{self.prefix}:{text_hash}"
-    
+
     async def get(self, text: str) -> Optional[List[float]]:
         """Get cached embedding"""
         key = self._get_key(text)
         cached = await self.redis.get(key)
-        
+
         if cached:
             return json.loads(cached)
         return None
-    
+
     async def set(self, text: str, embedding: List[float]):
         """Cache embedding"""
         key = self._get_key(text)
@@ -1327,10 +1327,10 @@ class EmbeddingCache:
             self.ttl,
             json.dumps(embedding)
         )
-    
+
     async def get_or_generate(
-        self, 
-        text: str, 
+        self,
+        text: str,
         generator_func
     ) -> List[float]:
         """Get from cache or generate"""
@@ -1338,11 +1338,11 @@ class EmbeddingCache:
         cached = await self.get(text)
         if cached:
             return cached
-        
+
         # Generate and cache
         embedding = await generator_func(text)
         await self.set(text, embedding)
-        
+
         return embedding
 ```
 
@@ -1351,12 +1351,12 @@ class EmbeddingCache:
 # app/services/search.py
 class HybridSearchService:
     """Optimized hybrid search across PostgreSQL and Qdrant"""
-    
+
     def __init__(self, db_session, qdrant_client, cache):
         self.db = db_session
         self.qdrant = qdrant_client
         self.cache = cache
-    
+
     async def search(
         self,
         query: str,
@@ -1365,13 +1365,13 @@ class HybridSearchService:
         limit: int = 10
     ) -> List[SearchResult]:
         """Perform optimized hybrid search"""
-        
+
         # 1. Get query embedding (with cache)
         embedding = await self.cache.get_or_generate(
             query,
             self.embedding_service.generate_embedding
         )
-        
+
         # 2. Vector search in Qdrant
         vector_results = await self.qdrant.search(
             collection_name="production_contexts",
@@ -1387,10 +1387,10 @@ class HybridSearchService:
             limit=limit * 2,  # Over-fetch for filtering
             with_payload=True
         )
-        
+
         # 3. Get document IDs
         doc_ids = [result.id for result in vector_results]
-        
+
         # 4. Fetch metadata from PostgreSQL
         if doc_ids:
             metadata_query = """
@@ -1399,17 +1399,17 @@ class HybridSearchService:
                 WHERE id = ANY(:ids)
                 AND deleted_at IS NULL
             """
-            
+
             rows = await self.db.execute(
                 metadata_query,
                 {"ids": doc_ids}
             )
-            
+
             # 5. Combine results
             metadata_map = {
                 str(row.id): row for row in rows
             }
-            
+
             results = []
             for vector_result in vector_results[:limit]:
                 if str(vector_result.id) in metadata_map:
@@ -1423,9 +1423,9 @@ class HybridSearchService:
                             created_at=row.created_at
                         )
                     )
-            
+
             return results
-        
+
         return []
 ```
 
@@ -1468,7 +1468,7 @@ def upgrade():
         'projects',
         sa.Column('id', postgresql.UUID(), nullable=False),
         sa.Column('name', sa.String(255), nullable=False),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), 
+        sa.Column('created_at', sa.TIMESTAMP(timezone=True),
                   server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.PrimaryKeyConstraint('id')
     )
@@ -1523,17 +1523,17 @@ import secrets
 class APIKeyAuth:
     def __init__(self):
         self.scheme = APIKeyHeader(name="X-API-Key", auto_error=False)
-    
+
     async def __call__(self, api_key: str = Security(scheme)) -> str:
         if not api_key:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="API key required"
             )
-        
+
         # Hash the API key for comparison
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-        
+
         # Verify against database
         valid_key = await verify_api_key_hash(key_hash)
         if not valid_key:
@@ -1541,7 +1541,7 @@ class APIKeyAuth:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API key"
             )
-        
+
         return valid_key.user_id
 ```
 
@@ -1568,8 +1568,8 @@ def create_access_token(user_id: str, scopes: List[str] = None):
 async def verify_token(token: str) -> TokenData:
     try:
         payload = jwt.decode(
-            token, 
-            settings.SECRET_KEY, 
+            token,
+            settings.SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM]
         )
         return TokenData(
@@ -1591,13 +1591,13 @@ def generate_api_key() -> tuple[str, str]:
     """Generate API key and its hash"""
     # Generate a secure random key
     raw_key = secrets.token_urlsafe(32)
-    
+
     # Create a prefixed key for easy identification
     api_key = f"mobius_{raw_key}"
-    
+
     # Hash for storage
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-    
+
     return api_key, key_hash
 
 # Usage
@@ -1616,10 +1616,10 @@ import base64
 class EncryptionService:
     def __init__(self, key: str):
         self.cipher = Fernet(base64.urlsafe_b64encode(key.encode()[:32]))
-    
+
     def encrypt(self, data: str) -> str:
         return self.cipher.encrypt(data.encode()).decode()
-    
+
     def decrypt(self, encrypted_data: str) -> str:
         return self.cipher.decrypt(encrypted_data.encode()).decode()
 
@@ -1637,14 +1637,14 @@ import re
 class ProjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: str = Field(None, max_length=1000)
-    
+
     @validator('name')
     def validate_name(cls, v):
         # Allow alphanumeric, spaces, hyphens, underscores
         if not re.match(r'^[\w\s-]+$', v):
             raise ValueError('Name contains invalid characters')
         return v.strip()
-    
+
     @validator('description')
     def sanitize_description(cls, v):
         if v:
@@ -1656,18 +1656,18 @@ class FileUpload(BaseModel):
     filename: str = Field(..., max_length=255)
     content_type: str
     size: int = Field(..., gt=0, le=10_485_760)  # Max 10MB
-    
+
     @validator('filename')
     def validate_filename(cls, v):
         # Prevent directory traversal
         if '..' in v or '/' in v or '\\' in v:
             raise ValueError('Invalid filename')
-        
+
         # Check extension
         allowed_extensions = {'.py', '.js', '.ts', '.md', '.json'}
         if not any(v.endswith(ext) for ext in allowed_extensions):
             raise ValueError('File type not allowed')
-        
+
         return v
 ```
 
@@ -1682,7 +1682,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
-        
+
         # Security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -1690,7 +1690,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Content-Security-Policy"] = "default-src 'self'"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        
+
         return response
 
 # Application setup
@@ -1724,17 +1724,17 @@ from app.services.context_service import ContextService
 
 class TestContextService:
     """Test cases for ContextService"""
-    
+
     @pytest.fixture
     def mock_repo(self):
         """Mock repository fixture"""
         return Mock()
-    
+
     @pytest.fixture
     def service(self, mock_repo):
         """Service fixture with mocked dependencies"""
         return ContextService(repository=mock_repo)
-    
+
     @pytest.mark.asyncio
     async def test_create_context_success(self, service, mock_repo):
         """Test successful context creation"""
@@ -1742,22 +1742,22 @@ class TestContextService:
         project_id = "123e4567-e89b-12d3-a456-426614174000"
         content = "def hello_world(): pass"
         expected_context = Mock(id="context-123")
-        
+
         mock_repo.create.return_value = expected_context
-        
+
         # Act
         result = await service.create_context(project_id, content)
-        
+
         # Assert
         assert result == expected_context
         mock_repo.create.assert_called_once()
-    
+
     @pytest.mark.asyncio
     async def test_create_context_invalid_project(self, service, mock_repo):
         """Test context creation with invalid project"""
         # Arrange
         mock_repo.get_project.return_value = None
-        
+
         # Act & Assert
         with pytest.raises(ValueError, match="Project not found"):
             await service.create_context("invalid-id", "content")
@@ -1781,25 +1781,25 @@ async def postgres_container():
 async def db_session(postgres_container):
     """Database session for testing"""
     engine = create_async_engine(postgres_container.get_connection_url())
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     async with AsyncSession(engine) as session:
         yield session
-    
+
     await engine.dispose()
 
 @pytest.mark.integration
 async def test_project_repository_create(db_session):
     """Test project creation in database"""
     repo = ProjectRepository(db_session)
-    
+
     project = await repo.create(
         name="Test Project",
         user_id="user-123"
     )
-    
+
     assert project.id is not None
     assert project.name == "Test Project"
 ```
@@ -1813,14 +1813,14 @@ import json
 
 class MobiusUser(HttpUser):
     wait_time = between(1, 3)
-    
+
     def on_start(self):
         """Get API key on start"""
         self.headers = {
             "X-API-Key": "test-api-key",
             "Content-Type": "application/json"
         }
-    
+
     @task(3)
     def create_context(self):
         """Test context creation endpoint"""
@@ -1829,7 +1829,7 @@ class MobiusUser(HttpUser):
             "content": "def test_function(): return 42",
             "metadata": {"language": "python"}
         }
-        
+
         with self.client.post(
             "/api/v1/contexts",
             json=payload,
@@ -1838,7 +1838,7 @@ class MobiusUser(HttpUser):
         ) as response:
             if response.elapsed.total_seconds() > 0.5:
                 response.failure("Request took too long")
-    
+
     @task(5)
     def search_contexts(self):
         """Test context search endpoint"""
@@ -1846,7 +1846,7 @@ class MobiusUser(HttpUser):
             "q": "test function",
             "limit": 10
         }
-        
+
         self.client.get(
             "/api/v1/contexts/search",
             params=params,
@@ -1868,7 +1868,7 @@ class UserFactory(SQLAlchemyModelFactory):
     class Meta:
         model = User
         sqlalchemy_session_persistence = "commit"
-    
+
     id = factory.LazyFunction(lambda: str(uuid.uuid4()))
     email = factory.LazyAttribute(lambda _: fake.email())
     name = factory.LazyAttribute(lambda _: fake.name())
@@ -1877,7 +1877,7 @@ class UserFactory(SQLAlchemyModelFactory):
 class ProjectFactory(SQLAlchemyModelFactory):
     class Meta:
         model = Project
-    
+
     id = factory.LazyFunction(lambda: str(uuid.uuid4()))
     name = factory.Sequence(lambda n: f"Project {n}")
     user = factory.SubFactory(UserFactory)
@@ -1907,7 +1907,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -1920,7 +1920,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      
+
       redis:
         image: redis:7
         options: >-
@@ -1930,29 +1930,29 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Install Poetry
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
         echo "$HOME/.local/bin" >> $GITHUB_PATH
-    
+
     - name: Install dependencies
       run: poetry install
-    
+
     - name: Run linters
       run: |
         poetry run black --check .
         poetry run ruff check .
         poetry run mypy .
-    
+
     - name: Run tests
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
@@ -1963,7 +1963,7 @@ jobs:
           --cov-report=xml \
           --cov-report=term-missing \
           -v
-    
+
     - name: Upload coverage
       uses: codecov/codecov-action@v3
       with:
@@ -2033,17 +2033,17 @@ class RateLimiter:
         self.requests = requests
         self.window = window
         self.cache = {}
-    
+
     async def __call__(self, request: Request):
         client_id = request.client.host
         now = time.time()
-        
+
         # Clean old entries
         self.cache = {
-            k: v for k, v in self.cache.items() 
+            k: v for k, v in self.cache.items()
             if now - v['first'] < self.window
         }
-        
+
         if client_id in self.cache:
             if self.cache[client_id]['count'] >= self.requests:
                 raise HTTPException(
@@ -2120,18 +2120,18 @@ class CacheService:
     def __init__(self, redis_client):
         self.redis = redis_client
         self.default_ttl = 3600
-    
+
     async def get_or_set(
-        self, 
-        key: str, 
-        func, 
+        self,
+        key: str,
+        func,
         ttl: Optional[int] = None
     ):
         # Try cache first
         cached = await self.redis.get(key)
         if cached:
             return json.loads(cached)
-        
+
         # Compute and cache
         result = await func()
         await self.redis.setex(
@@ -2140,13 +2140,13 @@ class CacheService:
             json.dumps(result)
         )
         return result
-    
+
     def cache_key(self, prefix: str, **kwargs) -> str:
         """Generate consistent cache key"""
         parts = [prefix]
         for k, v in sorted(kwargs.items()):
             parts.append(f"{k}:{v}")
-        
+
         key_string = ":".join(parts)
         return f"mobius:cache:{hashlib.md5(key_string.encode()).hexdigest()}"
 ```
@@ -2165,7 +2165,7 @@ def profile(func):
     async def wrapper(*args, **kwargs):
         profiler = cProfile.Profile()
         profiler.enable()
-        
+
         try:
             result = await func(*args, **kwargs)
             return result
@@ -2174,7 +2174,7 @@ def profile(func):
             stats = pstats.Stats(profiler)
             stats.sort_stats('cumulative')
             stats.print_stats(10)  # Top 10 functions
-    
+
     return wrapper
 
 # Usage
@@ -2219,16 +2219,16 @@ from typing import List, Optional, Dict, Any
 class ContextService:
     """
     Service for managing context operations.
-    
+
     This service handles all context-related business logic including
     creation, retrieval, processing, and search operations.
-    
+
     Attributes:
         repository: The context repository for data access
         embedder: The embedding service for vector generation
         cache: The caching service for performance optimization
     """
-    
+
     async def create_context(
         self,
         project_id: str,
@@ -2237,10 +2237,10 @@ class ContextService:
     ) -> Context:
         """
         Create a new context for a project.
-        
+
         This method processes the content, generates embeddings, and stores
         the context in both the database and vector store.
-        
+
         Args:
             project_id: The UUID of the project
             content: The raw content to be processed
@@ -2248,15 +2248,15 @@ class ContextService:
                 - language: Programming language (python, javascript, etc)
                 - file_path: Original file path
                 - version: Content version number
-        
+
         Returns:
             Context: The created context object with generated ID
-        
+
         Raises:
             ValueError: If project_id is invalid or content is empty
             ProcessingError: If content processing fails
             StorageError: If database or vector storage fails
-        
+
         Example:
             >>> service = ContextService()
             >>> context = await service.create_context(
@@ -2275,7 +2275,7 @@ class ContextService:
 ```typescript
 /**
  * Context provider for VSCode extension
- * 
+ *
  * Manages the context state and provides methods for context operations
  * within the VSCode environment.
  */
@@ -2283,23 +2283,23 @@ export class ContextProvider implements vscode.TreeDataProvider<ContextItem> {
     /**
      * Event emitter for tree data changes
      */
-    private _onDidChangeTreeData: vscode.EventEmitter<ContextItem | undefined | null | void> = 
+    private _onDidChangeTreeData: vscode.EventEmitter<ContextItem | undefined | null | void> =
         new vscode.EventEmitter<ContextItem | undefined | null | void>();
-    
+
     /**
      * Event that fires when tree data changes
      */
-    readonly onDidChangeTreeData: vscode.Event<ContextItem | undefined | null | void> = 
+    readonly onDidChangeTreeData: vscode.Event<ContextItem | undefined | null | void> =
         this._onDidChangeTreeData.event;
-    
+
     /**
      * Creates a new context item in the current project
-     * 
+     *
      * @param {string} content - The content to create context from
      * @param {ContextMetadata} metadata - Additional metadata for the context
      * @returns {Promise<ContextItem>} The created context item
      * @throws {Error} If the API request fails
-     * 
+     *
      * @example
      * const context = await provider.createContext(
      *     "function calculate() { return 42; }",
@@ -2307,7 +2307,7 @@ export class ContextProvider implements vscode.TreeDataProvider<ContextItem> {
      * );
      */
     async createContext(
-        content: string, 
+        content: string,
         metadata?: ContextMetadata
     ): Promise<ContextItem> {
         // Implementation
@@ -2341,14 +2341,14 @@ app = FastAPI(
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
-    
+
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
         description=app.description,
         routes=app.routes,
     )
-    
+
     # Add custom schemas
     openapi_schema["components"]["securitySchemes"] = {
         "APIKeyHeader": {
@@ -2357,7 +2357,7 @@ def custom_openapi():
             "name": "X-API-Key"
         }
     }
-    
+
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -2404,7 +2404,7 @@ async def create_context(
 ) -> ContextResponse:
     """
     Create a new context.
-    
+
     - **project_id**: UUID of the project
     - **content**: The raw content to process
     - **metadata**: Optional metadata (language, file_path, etc)
@@ -2725,22 +2725,22 @@ logger = logging.getLogger(__name__)
 
 async def debug_middleware(request: Request, call_next):
     start_time = time.time()
-    
+
     # Log request
     logger.debug(f"Request: {request.method} {request.url}")
     logger.debug(f"Headers: {dict(request.headers)}")
-    
+
     # Process request
     response = await call_next(request)
-    
+
     # Log response
     process_time = time.time() - start_time
     logger.debug(f"Response: {response.status_code} in {process_time:.3f}s")
-    
+
     # Add debug headers
     response.headers["X-Process-Time"] = str(process_time)
     response.headers["X-Request-ID"] = request.state.request_id
-    
+
     return response
 
 # Enable in development
@@ -2851,20 +2851,20 @@ def rollback_database(steps=1):
             text=True
         )
         print(f"Current version: {result.stdout}")
-        
+
         # Confirm rollback
         confirm = input(f"Rollback {steps} migration(s)? (y/n): ")
         if confirm.lower() != 'y':
             print("Rollback cancelled")
             return
-        
+
         # Execute rollback
         subprocess.run(
             ["alembic", "downgrade", f"-{steps}"],
             check=True
         )
         print("Rollback complete")
-        
+
     except subprocess.CalledProcessError as e:
         print(f"Rollback failed: {e}")
         sys.exit(1)
@@ -2886,7 +2886,7 @@ from pythonjsonlogger import jsonlogger
 
 def configure_logging():
     """Configure structured logging"""
-    
+
     structlog.configure(
         processors=[
             structlog.stdlib.filter_by_level,
@@ -2910,12 +2910,12 @@ def configure_logging():
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard logging
     logHandler = logging.StreamHandler()
     formatter = jsonlogger.JsonFormatter()
     logHandler.setFormatter(formatter)
-    
+
     logging.basicConfig(
         handlers=[logHandler],
         level=getattr(logging, settings.LOG_LEVEL),
@@ -2934,24 +2934,24 @@ class LoggingMiddleware:
     async def __call__(self, request: Request, call_next):
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
         request_id_var.set(request_id)
-        
+
         # Add to structlog context
         structlog.contextvars.bind_contextvars(
             request_id=request_id,
             method=request.method,
             path=request.url.path
         )
-        
+
         response = await call_next(request)
-        
+
         # Clear context
         structlog.contextvars.clear_contextvars()
-        
+
         return response
 
 # Usage in code
 logger = structlog.get_logger()
-logger.info("processing_context", 
+logger.info("processing_context",
     project_id=project_id,
     chunk_count=len(chunks)
 )
@@ -3000,25 +3000,25 @@ class MetricsMiddleware:
     async def __call__(self, request: Request, call_next):
         method = request.method
         path = request.url.path
-        
+
         # Skip metrics endpoint
         if path == "/metrics":
             return await call_next(request)
-        
+
         # Track request
         with request_duration.labels(
             method=method,
             endpoint=path
         ).time():
             response = await call_next(request)
-        
+
         # Count request
         request_count.labels(
             method=method,
             endpoint=path,
             status=response.status_code
         ).inc()
-        
+
         return response
 
 # Add metrics endpoint
@@ -3040,21 +3040,21 @@ from opentelemetry.instrumentation.redis import RedisInstrumentor
 
 def configure_tracing():
     """Configure OpenTelemetry tracing"""
-    
+
     # Set up the tracer provider
     trace.set_tracer_provider(TracerProvider())
     tracer_provider = trace.get_tracer_provider()
-    
+
     # Configure OTLP exporter
     otlp_exporter = OTLPSpanExporter(
         endpoint=settings.OTLP_ENDPOINT,
         insecure=True
     )
-    
+
     # Add span processor
     span_processor = BatchSpanProcessor(otlp_exporter)
     tracer_provider.add_span_processor(span_processor)
-    
+
     # Instrument libraries
     FastAPIInstrumentor.instrument_app(app)
     SQLAlchemyInstrumentor().instrument(engine=engine)
@@ -3066,14 +3066,14 @@ tracer = trace.get_tracer(__name__)
 async def process_context(context_data: dict):
     with tracer.start_as_current_span("process_context") as span:
         span.set_attribute("context.size", len(context_data))
-        
+
         # Processing logic
         with tracer.start_as_current_span("parse_content"):
             parsed = await parse_content(context_data)
-        
+
         with tracer.start_as_current_span("generate_embeddings"):
             embeddings = await generate_embeddings(parsed)
-        
+
         span.set_attribute("embeddings.count", len(embeddings))
         return embeddings
 ```
@@ -3096,7 +3096,7 @@ groups:
         annotations:
           summary: "High error rate detected"
           description: "Error rate is above 5% for 5 minutes"
-      
+
       - alert: HighLatency
         expr: |
           histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
@@ -3106,7 +3106,7 @@ groups:
         annotations:
           summary: "High API latency"
           description: "95th percentile latency is above 500ms"
-      
+
       - alert: DatabaseConnectionPoolExhausted
         expr: |
           db_connection_pool_size - db_connection_pool_available < 5
@@ -3187,11 +3187,11 @@ T = TypeVar('T')
 
 class AsyncBatcher:
     """Batch async operations with concurrency control"""
-    
+
     def __init__(self, batch_size: int = 100, max_concurrent: int = 10):
         self.batch_size = batch_size
         self.semaphore = Semaphore(max_concurrent)
-    
+
     async def process_batch(
         self,
         items: List[T],
@@ -3199,17 +3199,17 @@ class AsyncBatcher:
     ) -> List[Any]:
         """Process items in batches with concurrency limit"""
         results = []
-        
+
         for i in range(0, len(items), self.batch_size):
             batch = items[i:i + self.batch_size]
             batch_results = await asyncio.gather(
-                *[self._process_with_semaphore(process_func, item) 
+                *[self._process_with_semaphore(process_func, item)
                   for item in batch]
             )
             results.extend(batch_results)
-        
+
         return results
-    
+
     async def _process_with_semaphore(
         self,
         process_func: Callable[[T], Any],
@@ -3233,34 +3233,34 @@ import asyncio
 
 class TaskQueue:
     """Async task queue for background processing"""
-    
+
     def __init__(self):
         self.queue = asyncio.Queue()
         self.workers = []
-    
+
     async def start_workers(self, num_workers: int = 5):
         """Start background workers"""
         for i in range(num_workers):
             worker = asyncio.create_task(self._worker(f"worker-{i}"))
             self.workers.append(worker)
-    
+
     async def _worker(self, name: str):
         """Worker process"""
         logger = structlog.get_logger().bind(worker=name)
-        
+
         while True:
             try:
                 task = await self.queue.get()
                 logger.info("processing_task", task_id=task.id)
-                
+
                 await task.process()
-                
+
                 logger.info("task_completed", task_id=task.id)
             except Exception as e:
                 logger.error("task_failed", task_id=task.id, error=str(e))
             finally:
                 self.queue.task_done()
-    
+
     async def add_task(self, task):
         """Add task to queue"""
         await self.queue.put(task)
@@ -3289,7 +3289,7 @@ class RepositoryProtocol(Protocol):
 
 class ProjectService:
     """Service with injected dependencies"""
-    
+
     def __init__(
         self,
         repository: RepositoryProtocol,
@@ -3299,7 +3299,7 @@ class ProjectService:
         self.repository = repository
         self.cache = cache
         self.embedder = embedder
-    
+
     async def create_project(self, data: ProjectCreate) -> Project:
         # Business logic here
         project = await self.repository.create(data.dict())
@@ -3342,52 +3342,52 @@ import secrets
 
 class Settings(BaseSettings):
     """Application settings with validation"""
-    
+
     # Application
     app_name: str = "Mobius API"
     app_version: str = "1.0.0"
     environment: str = Field(..., env="APP_ENV")
     debug: bool = False
-    
+
     # API
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_prefix: str = "/api/v1"
     allowed_origins: List[str] = ["http://localhost:3000"]
-    
+
     # Database
     database_url: str
     database_pool_size: int = 20
     database_max_overflow: int = 40
-    
+
     # Redis
     redis_url: str
     redis_pool_size: int = 10
-    
+
     # Security
     secret_key: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     api_key_header: str = "X-API-Key"
     jwt_algorithm: str = "HS256"
     jwt_expiration: int = 86400  # 24 hours
-    
+
     # External Services
     openai_api_key: str
     qdrant_url: str
     qdrant_api_key: Optional[str] = None
-    
+
     @validator("environment")
     def validate_environment(cls, v):
         allowed = {"development", "staging", "production"}
         if v not in allowed:
             raise ValueError(f"Environment must be one of {allowed}")
         return v
-    
+
     @validator("database_url")
     def validate_database_url(cls, v):
         if not v.startswith("postgresql"):
             raise ValueError("Only PostgreSQL is supported")
         return v
-    
+
     class Config:
         env_file = ".env"
         case_sensitive = False
@@ -3413,11 +3413,11 @@ import json
 
 class SecretsManager:
     """AWS Secrets Manager integration"""
-    
+
     def __init__(self):
         self.client = boto3.client('secretsmanager')
         self._cache = {}
-    
+
     @lru_cache(maxsize=128)
     def get_secret(self, secret_name: str) -> dict:
         """Retrieve secret from AWS Secrets Manager"""
@@ -3427,7 +3427,7 @@ class SecretsManager:
         except Exception as e:
             logger.error(f"Failed to retrieve secret: {e}")
             raise
-    
+
     def get_database_credentials(self) -> dict:
         """Get database credentials"""
         secret = self.get_secret("mobius/database/credentials")
@@ -3438,7 +3438,7 @@ class SecretsManager:
             "password": secret["password"],
             "database": secret["database"]
         }
-    
+
     def get_api_keys(self) -> dict:
         """Get external API keys"""
         return self.get_secret("mobius/api/keys")
@@ -3463,13 +3463,13 @@ import asyncio
 
 class ResourcePool:
     """Generic resource pool with cleanup"""
-    
+
     def __init__(self, factory, max_size: int = 10):
         self.factory = factory
         self.max_size = max_size
         self.pool = asyncio.Queue(maxsize=max_size)
         self.active = set()
-    
+
     @asynccontextmanager
     async def acquire(self):
         """Acquire resource from pool"""
@@ -3485,10 +3485,10 @@ class ResourcePool:
                 else:
                     # Wait for available resource
                     resource = await self.pool.get()
-            
+
             self.active.add(resource)
             yield resource
-            
+
         finally:
             # Return to pool
             if resource:
@@ -3498,7 +3498,7 @@ class ResourcePool:
                 except asyncio.QueueFull:
                     # Pool full, cleanup resource
                     await self._cleanup_resource(resource)
-    
+
     async def _cleanup_resource(self, resource):
         """Cleanup resource"""
         if hasattr(resource, 'close'):
@@ -3520,35 +3520,35 @@ import asyncio
 
 class GracefulShutdown:
     """Handle graceful shutdown"""
-    
+
     def __init__(self):
         self.shutdown_event = asyncio.Event()
         self.tasks = set()
-    
+
     def setup_handlers(self):
         """Setup signal handlers"""
         for sig in (signal.SIGTERM, signal.SIGINT):
             signal.signal(sig, self._signal_handler)
-    
+
     def _signal_handler(self, signum, frame):
         """Handle shutdown signal"""
         logger.info("Shutdown signal received", signal=signum)
         self.shutdown_event.set()
-    
+
     async def create_task(self, coro):
         """Create tracked task"""
         task = asyncio.create_task(coro)
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
         return task
-    
+
     async def shutdown(self):
         """Perform graceful shutdown"""
         logger.info("Starting graceful shutdown")
-        
+
         # Signal all tasks to stop
         self.shutdown_event.set()
-        
+
         # Wait for tasks with timeout
         if self.tasks:
             logger.info(f"Waiting for {len(self.tasks)} tasks")
@@ -3556,14 +3556,14 @@ class GracefulShutdown:
                 self.tasks,
                 timeout=30.0
             )
-            
+
             # Cancel remaining tasks
             for task in pending:
                 task.cancel()
-            
+
             # Wait for cancellation
             await asyncio.gather(*pending, return_exceptions=True)
-        
+
         logger.info("Graceful shutdown complete")
 
 # Application lifecycle

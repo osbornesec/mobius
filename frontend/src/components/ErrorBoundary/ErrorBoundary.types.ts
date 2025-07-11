@@ -16,34 +16,34 @@ export interface ErrorBoundaryProps {
    * Children components to be wrapped by the error boundary
    */
   children: ReactNode;
-  
+
   /**
    * Custom fallback component or render function
    */
   fallback?: ReactNode | ((error: Error, errorInfo: ErrorInfo, reset: () => void) => ReactNode);
-  
+
   /**
    * Whether to show error details in development mode
    * @default true
    */
   showDetails?: boolean;
-  
+
   /**
    * Custom error logging function
    */
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  
+
   /**
    * Whether to reset error state when route changes
    * @default true
    */
   resetOnRouteChange?: boolean;
-  
+
   /**
    * Custom reset keys that trigger error boundary reset when changed
    */
   resetKeys?: Array<string | number>;
-  
+
   /**
    * Isolation level for the error boundary
    * - 'app': Top-level application boundary
@@ -85,18 +85,18 @@ export interface ErrorLogConfig {
    * @default true
    */
   logToConsole?: boolean;
-  
+
   /**
    * Whether to send errors to external service in production
    * @default true
    */
   sendToService?: boolean;
-  
+
   /**
    * Additional metadata to include with error logs
    */
   metadata?: Record<string, unknown>;
-  
+
   /**
    * Error service endpoint URL
    */

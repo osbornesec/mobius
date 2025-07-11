@@ -169,7 +169,7 @@ class LLMProvider(ABC):
     @abstractmethod
     async def complete(self, prompt: str, context: Context) -> str:
         pass
-    
+
     @abstractmethod
     async def embed(self, text: str) -> List[float]:
         pass

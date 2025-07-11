@@ -10,7 +10,7 @@ This document describes the fixes applied to the Docker Compose configurations t
 
 **Problem**: The production docker-compose.prod.yml file used the `${MOBIUS_SECRET_KEY:?Missing MOBIUS_SECRET_KEY}` syntax, which causes Docker Compose to fail during the build phase if the variable is not set.
 
-**Solution**: 
+**Solution**:
 - Changed to use a fallback placeholder: `${MOBIUS_SECRET_KEY:-PLACEHOLDER_SECRET_KEY_SET_IN_PRODUCTION}`
 - Added a production configuration validation script (`check-production-config.sh`) that runs on container startup
 - The script validates that the secret key is properly set and not using a placeholder value
@@ -25,12 +25,12 @@ This document describes the fixes applied to the Docker Compose configurations t
 
 **Problem**: The backend service was bound to `127.0.0.1:8000:8000`, making it accessible only from localhost on the host machine. The frontend's browser could not reach the backend because of this restrictive binding.
 
-**Solution**: 
+**Solution**:
 - Changed the backend port binding from `127.0.0.1:8000:8000` to `8000:8000`
 - This allows the backend to be accessible on all interfaces from the host machine
 - The frontend configuration remains unchanged (`VITE_API_URL: http://localhost:8000`) as it runs in the browser
 
-**Security Considerations**: 
+**Security Considerations**:
 - In development, exposing the backend on all interfaces is acceptable
 - The backend already has CORS configuration to restrict which origins can access it
 - For production deployments, consider using a reverse proxy or API gateway for additional security

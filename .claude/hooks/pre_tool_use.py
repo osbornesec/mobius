@@ -201,9 +201,6 @@ def main():
         # Format files with Prettier
         format_with_prettier(tool_name, tool_input)
 
-        if tool_name == "Bash":
-            command = tool_input.get("command", "")
-
         # Ensure log directory exists
         log_dir = Path.cwd() / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)

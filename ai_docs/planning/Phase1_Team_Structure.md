@@ -886,6 +886,6 @@ Engineer → Senior Engineer → Domain Expert → Chief Architect → Distingui
 
 ---
 
-**Document Approved By**: Technical Lead  
-**Last Updated**: 2025-01-07  
+**Document Approved By**: Technical Lead
+**Last Updated**: 2025-01-07
 **Next Review**: 2025-01-14

@@ -7,6 +7,7 @@ within the context engineering system.
 """
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
@@ -206,6 +207,3 @@ class BaseAgent(ABC):
     def __repr__(self) -> str:
         """String representation of the agent."""
         return f"{self.__class__.__name__}(id={self.id}, name={self.name}, status={self.status.value})"
-
-
-from datetime import datetime  # Import at the end to avoid circular imports

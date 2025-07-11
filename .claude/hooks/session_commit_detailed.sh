@@ -9,7 +9,7 @@ set -euo pipefail
 # Session Commit Detailed Script
 # Purpose: Creates a git commit with a detailed summary of the current Claude session
 # Usage: ./session_commit_detailed.sh
-# 
+#
 # This script will:
 # - Extract a summary of work done from the current session file
 # - Analyze staged files to determine commit scope
@@ -143,29 +143,29 @@ echo "$COMMIT_MESSAGE" > "$TEMP_FILE"
 # Create the commit
 if git commit -F "$TEMP_FILE"; then
   echo -e "${GREEN}✓ Commit created successfully!${NC}"
-  
+
   # Clean up temp file
   rm -f "$TEMP_FILE"
-  
+
   # Archive the current session
   TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
   ARCHIVE_NAME="session_${TIMESTAMP}_committed.md"
   mkdir -p "$SESSION_DIR/archive"
   cp "$SESSION_FILE" "$SESSION_DIR/archive/$ARCHIVE_NAME"
-  
+
   # Reset .current-session with a fresh session
   cat > "$SESSION_FILE" << EOF
 # Development Session - $(date +'%Y-%m-%d %H:%M')
 
 ## Session Overview
 - **Start Time**: $(date +'%B %d, %Y at %H:%M')
-- **Project**: dev/Mobius  
+- **Project**: dev/Mobius
 - **Working Directory**: $(pwd)
 - **Previous Session**: Archived as $ARCHIVE_NAME
 
 ## Progress
 EOF
-  
+
   echo -e "\n${GREEN}✓ Session reset complete!${NC}"
   echo -e "- Session archived to: ${BLUE}archive/$ARCHIVE_NAME${NC}"
   echo -e "- New session started in: ${BLUE}.current-session${NC}"

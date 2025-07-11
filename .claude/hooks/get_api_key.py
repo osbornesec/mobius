@@ -46,7 +46,7 @@ def get_api_key(service="anthropic"):
                         for env_var in env_names.get(service, []):
                             if line.startswith(f"{env_var}="):
                                 return line.split("=", 1)[1].strip("\"'")
-            except:
+            except (IOError, OSError, UnicodeDecodeError):
                 continue
 
     # 3. Check Claude's settings.json for API configurations
@@ -59,7 +59,7 @@ def get_api_key(service="anthropic"):
                 api_keys = settings.get("api_keys", {})
                 if service in api_keys:
                     return api_keys[service]
-        except:
+        except (IOError, OSError, json.JSONDecodeError):
             pass
 
     # 4. Check system keyring (if available)
@@ -92,7 +92,7 @@ def get_api_key(service="anthropic"):
                         for line in f:
                             if "api_key" in line.lower():
                                 return line.split("=", 1)[1].strip()
-            except:
+            except (IOError, OSError, json.JSONDecodeError, UnicodeDecodeError):
                 continue
 
     return None

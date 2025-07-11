@@ -12,7 +12,7 @@ describe('API Client Configuration', () => {
 
     // Create mock axios instance
     const { mockInstance } = createMockAxiosInstance();
-    
+
     // Mock axios.create to return our mock instance
     (axios.create as MockedFunction<typeof axios.create>).mockReturnValue(mockInstance as any);
 

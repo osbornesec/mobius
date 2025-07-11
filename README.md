@@ -295,7 +295,7 @@ See [deployment documentation](docs/deployment/) for detailed production setup i
 import requests
 
 # Example API call
-response = requests.post("http://localhost:8000/api/v1/context/search", 
+response = requests.post("http://localhost:8000/api/v1/context/search",
     json={"query": "authentication implementation"})
 print(response.json())
 ```
@@ -370,7 +370,7 @@ Mobius follows a comprehensive 24-month implementation plan spanning 4 phases. F
 
 ### Upcoming Phases:
 - **Phase 2 (Months 4-8)**: MVP with AI integration and IDE support
-- **Phase 3 (Months 9-16)**: Advanced multi-agent system and enterprise features  
+- **Phase 3 (Months 9-16)**: Advanced multi-agent system and enterprise features
 - **Phase 4 (Months 17-24)**: Enterprise scale supporting 10k+ concurrent users
 
 **Target Outcome**: Enterprise-grade AI context engineering platform with <200ms latency and multi-agent AI coordination.

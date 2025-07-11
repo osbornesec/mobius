@@ -8,7 +8,7 @@ response formatting for the API.
 
 import time
 import traceback
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 from uuid import UUID
 
 from fastapi import FastAPI, Request, Response, status
@@ -19,7 +19,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exceptions import (
     MobiusException,
-    ValidationError,
     ErrorCode,
 )
 from app.core.logging import get_logger
@@ -41,22 +40,22 @@ class ErrorResponse:
     def create(
         error_code: str,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
         request_id: Optional[str] = None,
         path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generates a standardized error response dictionary for API error handling.
         
         Args:
             error_code (str): A standardized error code representing the error type.
             message (str): A human-readable description of the error.
-            details (Optional[Dict[str, Any]]): Additional context or metadata about the error.
+            details (Optional[dict[str, Any]]): Additional context or metadata about the error.
             request_id (Optional[str]): The correlation ID for the request, if available.
             path (Optional[str]): The request path where the error occurred.
         
         Returns:
-            Dict[str, Any]: A dictionary containing the error code, message, optional details, request ID, path, and a timestamp, formatted for consistent API error responses.
+            dict[str, Any]: A dictionary containing the error code, message, optional details, request ID, path, and a timestamp, formatted for consistent API error responses.
         
         Example:
             response = ErrorResponse.create(
@@ -282,6 +281,58 @@ async def handle_validation_error(
     )
 
 
+async def handle_pydantic_validation_error(
+    request: Request,
+    exc: PydanticValidationError,
+) -> JSONResponse:
+    """
+    Handles Pydantic validation errors and returns a standardized JSON response.
+    
+    Args:
+        request (Request): The incoming FastAPI request object.
+        exc (PydanticValidationError): The Pydantic validation error.
+    
+    Returns:
+        JSONResponse: A response with HTTP status 422 and validation error details.
+    """
+    request_id = get_request_id(request)
+    
+    # Format Pydantic validation errors
+    errors = []
+    for error in exc.errors():
+        error_dict = {
+            "field": ".".join(str(loc) for loc in error["loc"]),
+            "message": error["msg"],
+            "type": error["type"],
+        }
+        if "ctx" in error:
+            error_dict["context"] = error["ctx"]
+        errors.append(error_dict)
+    
+    logger.warning(
+        "Pydantic validation error",
+        extra={
+            "errors": errors,
+            "request_id": request_id,
+            "path": request.url.path,
+        },
+    )
+    
+    # Create response
+    response_data = ErrorResponse.create(
+        error_code=ErrorCode.VALIDATION_ERROR.value,
+        message="Data validation failed",
+        details={"validation_errors": errors},
+        request_id=request_id,
+        path=request.url.path,
+    )
+    
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=response_data,
+    )
+
+
 async def handle_http_exception(
     request: Request,
     exc: HTTPException,
@@ -368,14 +419,13 @@ async def handle_generic_exception(
     request_id = get_request_id(request)
     
     # Log the full exception
-    logger.error(
+    logger.exception(
         f"Unexpected error: {str(exc)}",
         extra={
             "request_id": request_id,
             "path": request.url.path,
             "exception_type": type(exc).__name__,
         },
-        exc_info=True,
     )
     
     # Create response - don't expose internal details in production
@@ -428,7 +478,7 @@ def setup_exception_handlers(app: FastAPI) -> None:
     
     # Handle validation errors
     app.add_exception_handler(RequestValidationError, handle_validation_error)
-    app.add_exception_handler(PydanticValidationError, handle_validation_error)
+    app.add_exception_handler(PydanticValidationError, handle_pydantic_validation_error)
     
     # Handle HTTP exceptions
     app.add_exception_handler(HTTPException, handle_http_exception)
@@ -489,14 +539,13 @@ class ErrorHandlerMiddleware:
             
         except Exception as exc:
             # This should rarely be hit as exception handlers should catch most errors
-            logger.error(
+            logger.exception(
                 f"Uncaught exception in middleware: {str(exc)}",
                 extra={
                     "request_id": get_request_id(request),
                     "path": request.url.path,
                     "method": request.method,
                 },
-                exc_info=True,
             )
             
             # Return a generic error response

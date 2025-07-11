@@ -34,26 +34,15 @@ export function useTheme() {
     // Apply theme immediately
     applyTheme();
 
-    // Listen for system theme changes only when theme is 'system'
-    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-      if (theme === 'system') {
-        if (e.matches) {
-          root.classList.add('dark');
-        } else {
-          root.classList.remove('dark');
-        }
-      }
-    };
-
     // Only add the event listener when theme is 'system'
     if (theme === 'system') {
-      mediaQuery.addEventListener('change', handleSystemThemeChange);
+      mediaQuery.addEventListener('change', applyTheme);
     }
 
     return () => {
       // Only remove the event listener when theme is 'system'
       if (theme === 'system') {
-        mediaQuery.removeEventListener('change', handleSystemThemeChange);
+        mediaQuery.removeEventListener('change', applyTheme);
       }
     };
   }, [theme]);

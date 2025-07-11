@@ -47,12 +47,7 @@ def main():
                 f"Suggestion: File '{file_path}' has {line_count} lines, which exceeds the recommended {MAX_LINES} lines. Consider refactoring this file to improve readability and maintainability.",
                 file=sys.stderr,
             )
-
-    try:
-        with open(file_path, encoding="utf-8") as f:
-            return len(f.readlines())
     except (IOError, OSError, UnicodeDecodeError) as e:
-        logger.error("Failed to count lines in %s: %s", file_path, e)
         # Log error but don't block operation
         print(f"Error checking line count for {file_path}: {e}", file=sys.stderr)
 

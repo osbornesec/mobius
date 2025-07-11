@@ -19,7 +19,8 @@ BLOCKED_EXTENSIONS = [
 ]
 
 
-def main():
+-def main():
++def main() -> None:
     try:
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError:

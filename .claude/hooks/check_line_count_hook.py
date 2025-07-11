@@ -6,7 +6,7 @@ import os
 MAX_LINES = 300
 
 
-def main():
+def main() -> None:
     try:
         input_data = json.load(sys.stdin)
     except json.JSONDecodeError:

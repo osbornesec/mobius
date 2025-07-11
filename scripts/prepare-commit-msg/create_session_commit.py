@@ -93,71 +93,103 @@ def analyze_session(session_content):
 def try_ai_summary(diff_content, session_content):
     """Try to generate summary using Google Gemini"""
     try:
-        # Try to get API key for Google/Gemini
-        api_key_script = os.path.join(os.path.dirname(__file__), "get_api_key.py")
-        if os.path.exists(api_key_script):
-            result = subprocess.run(
-                [sys.executable, api_key_script, "google"],
-                capture_output=True,
-                text=True,
+        # Try multiple methods to get the API key
+        api_key = None
+
+        # Method 1: Check environment variable directly
+        api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+
+        # Method 2: Try to use get_api_key.py script from multiple locations
+        if not api_key:
+            possible_paths = [
+                os.path.join(os.path.dirname(__file__), "get_api_key.py"),
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "..",
+                    "..",
+                    ".claude",
+                    "hooks",
+                    "get_api_key.py",
+                ),
+                os.path.join(
+                    Path(__file__).resolve().parent.parent.parent,
+                    ".claude",
+                    "hooks",
+                    "get_api_key.py",
+                ),
+            ]
+
+            for api_key_script in possible_paths:
+                if os.path.exists(api_key_script):
+                    result = subprocess.run(
+                        [sys.executable, api_key_script, "google"],
+                        capture_output=True,
+                        text=True,
+                        cwd=os.path.dirname(
+                            api_key_script
+                        ),  # Run from script's directory
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        api_key = result.stdout.strip()
+                        break
+
+        if api_key:
+            # Use Google Gemini API
+            import google.generativeai as genai
+            from google.generativeai import types
+
+            genai.configure(api_key=api_key)  # type: ignore
+            model = genai.GenerativeModel("gemini-1.5-flash")  # type: ignore
+
+            # Use raw diff content with size limit
+            prompt_diff = diff_content[:3000] if diff_content else "No diff content"
+            prompt = f"""Analyze these code changes and development session to write a detailed commit message.\n\nCode Changes:\n{prompt_diff}\n\nDevelopment Session Context:\n{session_content[-800:] if session_content else 'No session data'}\n\nWrite a comprehensive commit message that:\n- Uses a clear, descriptive title (50-72 characters)\n- Includes a detailed body explaining what was changed and why\n- Focuses on the technical purpose and business impact\n- Uses proper commit message format\n\nProvide only the commit message text (title + body if appropriate)."""
+            response = model.generate_content(
+                prompt,
+                generation_config=types.GenerationConfig(
+                    max_output_tokens=500,
+                    temperature=0.3,
+                ),
+                safety_settings=[
+                    {
+                        "category": types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        "threshold": types.HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        "threshold": types.HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        "threshold": types.HarmBlockThreshold.BLOCK_NONE,
+                    },
+                    {
+                        "category": types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                        "threshold": types.HarmBlockThreshold.BLOCK_NONE,
+                    },
+                ],
             )
-            if result.returncode == 0 and result.stdout.strip():
-                api_key = result.stdout.strip()
 
-                # Use Google Gemini API
-                import google.generativeai as genai
-
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel("gemini-1.5-flash")
-
-                # Use raw diff content with size limit
-                prompt_diff = diff_content[:3000] if diff_content else "No diff content"
-                prompt = f"""Analyze these code changes and development session to write a detailed commit message.\n\nCode Changes:\n{prompt_diff}\n\nDevelopment Session Context:\n{session_content[-800:] if session_content else 'No session data'}\n\nWrite a comprehensive commit message that:\n- Uses a clear, descriptive title (50-72 characters)\n- Includes a detailed body explaining what was changed and why\n- Focuses on the technical purpose and business impact\n- Uses proper commit message format\n\nProvide only the commit message text (title + body if appropriate)."""
-                response = model.generate_content(
-                    prompt,
-                    generation_config=genai.types.GenerationConfig(
-                        max_output_tokens=500,
-                        temperature=0.3,
-                    ),
-                    safety_settings=[
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        },
-                        {
-                            "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                            "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
-                        },
-                    ],
-                )
-
-                # Response validation and error handling
-                if hasattr(response, "candidates") and response.candidates:
-                    candidate = response.candidates[0]
-                    if hasattr(candidate, "finish_reason"):
-                        # Check if content was blocked
-                        if candidate.finish_reason in [2, "SAFETY"]:
-                            return None
-
-                    # Try to access the text content safely
-                    try:
-                        if hasattr(response, "text") and response.text:
-                            return response.text.strip()
-                        else:
-                            return None
-                    except Exception:
+            # Response validation and error handling
+            if hasattr(response, "candidates") and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, "finish_reason"):
+                    # Check if content was blocked
+                    if candidate.finish_reason in [2, "SAFETY"]:
                         return None
-                else:
+
+                # Try to access the text content safely
+                try:
+                    if hasattr(response, "text") and response.text:
+                        return response.text.strip()
+                    else:
+                        return None
+                except Exception:
                     return None
+            else:
+                return None
     except Exception:
+        # Silently fail and fall back to rule-based summary
         pass
 
     return None

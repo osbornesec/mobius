@@ -753,7 +753,7 @@ class MobiusHealthMonitor:
         redis_health = self.check_redis()
         print(f"\n💾 Redis: {redis_health['status'].upper()}")
         print(f"   Memory: {redis_health['used_memory_mb']:.2f} MB")
-        print(f"   Hit Rate: {redis_health['hit_rate']}%"
+        print(f"   Hit Rate: {redis_health['hit_rate']}%")
         print(f"   Clients: {redis_health['connected_clients']}")
 
         # Qdrant

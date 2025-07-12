@@ -16,11 +16,10 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
-from app.core.database import engine
+from app.db.base import engine, Base, check_database_health, dispose_engine
 from app.core.logging import logger, LogConfig
 from app.middleware.correlation import CorrelationIdMiddleware
 from app.middleware.logging import LoggingMiddleware
-from app.models.database import Base
 
 
 @asynccontextmanager
@@ -51,7 +50,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down Mobius platform...")
 
     # Close database connections
-    await engine.dispose()
+    await dispose_engine()
 
     # Close vector store connections
     # TODO: Close Qdrant and Pinecone connections
@@ -154,15 +153,30 @@ async def root() -> Dict[str, Any]:
 
 
 @app.get("/health", tags=["Health"])
-async def health_check() -> Dict[str, str]:
+async def health_check() -> Dict[str, Any]:
     """
     Health check endpoint for monitoring.
 
     Returns:
-        Dict[str, str]: Health status
+        Dict[str, Any]: Health status with component details
     """
-    # TODO: Add actual health checks for database, cache, and vector stores
-    return {"status": "healthy"}
+    # Check database health
+    db_healthy = await check_database_health()
+
+    # TODO: Add health checks for cache and vector stores
+    redis_healthy = True  # Placeholder
+    vector_stores_healthy = True  # Placeholder
+
+    overall_healthy = db_healthy and redis_healthy and vector_stores_healthy
+
+    return {
+        "status": "healthy" if overall_healthy else "unhealthy",
+        "components": {
+            "database": "healthy" if db_healthy else "unhealthy",
+            "cache": "healthy" if redis_healthy else "unhealthy",
+            "vector_stores": "healthy" if vector_stores_healthy else "unhealthy",
+        },
+    }
 
 
 if __name__ == "__main__":

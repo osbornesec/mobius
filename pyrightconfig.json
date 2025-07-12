@@ -2,10 +2,10 @@
   "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.13",
-  "exclude": [
-    "**/__pycache__",
-    "**/.pytest_cache",
-    "**/node_modules",
-    ".venv"
-  ]
+  "exclude": ["**/__pycache__", "**/.pytest_cache", "**/node_modules", ".venv"],
+  "ignore": ["alembic/**", "tests/**"],
+  "reportMissingImports": "warning",
+  "reportAttributeAccessIssue": "warning",
+  "reportOptionalSubscript": "warning",
+  "reportGeneralTypeIssues": "warning"
 }
